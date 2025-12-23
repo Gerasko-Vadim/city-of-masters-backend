@@ -8,6 +8,7 @@ import { AuthModule } from './auth/auth.module';
 import { Order } from './order/entities/order.entity';
 import { Operator } from './operators/entities/operator.entity';
 
+console.log('DATABASE_URL:', process.env.DATABASE_URL);
 @Module({
   imports: [
     OrderModule,
