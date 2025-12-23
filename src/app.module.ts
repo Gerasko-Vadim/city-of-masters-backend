@@ -15,10 +15,7 @@ import { Operator } from './operators/entities/operator.entity';
       type: 'postgres',
       url: process.env.DATABASE_URL,
       entities: [Order, Operator],
-      synchronize: true, // ❗️только dev / MVP
-      ssl: {
-        rejectUnauthorized: false,
-      },
+      synchronize: true,
     }),
 
     OperatorsModule,
