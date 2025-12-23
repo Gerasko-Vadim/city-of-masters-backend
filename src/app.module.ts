@@ -5,31 +5,26 @@ import { OrderModule } from './order/order.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { OperatorsModule } from './operators/operators.module';
 import { AuthModule } from './auth/auth.module';
+import { Order } from './order/entities/order.entity';
+import { Operator } from './operators/entities/operator.entity';
 
 @Module({
   imports: [
     OrderModule,
     TypeOrmModule.forRoot({
       type: 'postgres',
+      host: process.env.DB_HOST,
+      port: Number(process.env.DB_PORT),
+      username: process.env.DB_USER,
+      password: process.env.DB_PASSWORD,
+      database: process.env.DB_NAME,
 
-      // ✅ если есть DATABASE_URL — используем её (prod)
-      url: process.env.DATABASE_URL,
+      entities: [Order, Operator],
 
-      // ✅ если нет — используем локальные переменные (dev)
-      host: process.env.DB_HOST || 'localhost',
-      port: Number(process.env.DB_PORT) || 5432,
-      username: process.env.DB_USER || 'postgres',
-      password: process.env.DB_PASSWORD || 'postgres',
-      database: process.env.DB_NAME || 'city_of_masters',
-
-      autoLoadEntities: true,
-
-      synchronize: process.env.NODE_ENV !== 'production',
-
-      ssl:
-        process.env.NODE_ENV === 'production'
-          ? { rejectUnauthorized: false }
-          : false,
+      synchronize: true, // ⚠️ только для MVP / dev
+      ssl: {
+        rejectUnauthorized: false,
+      },
     }),
 
     OperatorsModule,
