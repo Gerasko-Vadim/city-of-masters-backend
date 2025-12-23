@@ -2,16 +2,22 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
+import { DataSource } from 'typeorm';
+import { seedAdmin } from './seeds/admin.seed';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  // ✅ Seed admin
+  const dataSource = app.get(DataSource);
+  await seedAdmin(dataSource);
+
   // Глобальная валидация DTO
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: true, // удаляет лишние поля
-      forbidNonWhitelisted: true, // запрещает лишние поля
-      transform: true, // автоматически превращает строки в числа, boolean и т.д.
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
     }),
   );
 
