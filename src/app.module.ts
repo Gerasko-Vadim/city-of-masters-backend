@@ -14,8 +14,13 @@ import { Operator } from './operators/entities/operator.entity';
     TypeOrmModule.forRoot({
       type: 'postgres',
       url: process.env.DATABASE_URL,
+
       entities: [Order, Operator],
-      synchronize: true,
+
+      synchronize: true, // ⚠️ ok для MVP
+      ssl: {
+        rejectUnauthorized: false,
+      },
     }),
 
     OperatorsModule,
