@@ -14,14 +14,15 @@ console.log('DATABASE_URL:', process.env.DATABASE_URL);
     OrderModule,
     TypeOrmModule.forRoot({
       type: 'postgres',
-      url: process.env.DATABASE_URL,
+      host: process.env.PGHOST,
+      port: Number(process.env.PGPORT),
+      username: process.env.PGUSER,
+      password: process.env.PGPASSWORD,
+      database: process.env.PGDATABASE,
 
       entities: [Order, Operator],
-
-      synchronize: true, // ⚠️ ok для MVP
-      ssl: {
-        rejectUnauthorized: false,
-      },
+      synchronize: true,
+      ssl: false,
     }),
 
     OperatorsModule,
