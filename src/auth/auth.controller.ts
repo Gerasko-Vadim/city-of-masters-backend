@@ -1,30 +1,14 @@
 // src/auth/auth.controller.ts
-import { Controller, Post, Body, Res } from '@nestjs/common';
-import { type Response } from 'express';
+import { Controller, Post, Body } from '@nestjs/common';
 import { AuthService } from './auth.service';
+import { LoginOperatorDto } from './dto/login-operator.dto';
 
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('login')
-  async login(
-    @Body() body: { username: string; password: string },
-    @Res({ passthrough: true }) res: Response,
-  ) {
-    const { accessToken } = await this.authService.login(
-      body.username,
-      body.password,
-    );
-
-    res.cookie('token', accessToken, {
-      httpOnly: true, // ❗ JS не видит — безопасно
-      secure: false,
-      sameSite: 'lax',
-      path: '/',
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 дней
-    });
-
-    return { success: true };
+  login(@Body() dto: LoginOperatorDto) {
+    return this.authService.login(dto.username, dto.password);
   }
 }
