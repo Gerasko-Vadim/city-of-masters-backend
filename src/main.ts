@@ -8,6 +8,11 @@ import { seedAdmin } from './seeds/admin.seed';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  app.enableCors({
+    origin: ['http://localhost:3000'],
+    credentials: true,
+  });
+
   // ✅ Seed admin
   const dataSource = app.get(DataSource);
   await seedAdmin(dataSource);
