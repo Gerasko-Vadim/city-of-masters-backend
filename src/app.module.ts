@@ -7,6 +7,7 @@ import { OperatorsModule } from './operators/operators.module';
 import { AuthModule } from './auth/auth.module';
 import { Order } from './order/entities/order.entity';
 import { Operator } from './operators/entities/operator.entity';
+import { SpecialistsModule } from './specialists/specialists.module';
 
 console.log('DATABASE_URL:', process.env.DATABASE_URL);
 @Module({
@@ -27,6 +28,7 @@ console.log('DATABASE_URL:', process.env.DATABASE_URL);
 
     OperatorsModule,
     AuthModule,
+    SpecialistsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

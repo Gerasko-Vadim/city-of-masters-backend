@@ -1,9 +1,11 @@
+import { Specialist } from 'src/specialists/entities/specialist.entity';
 import {
   Entity,
   Column,
   PrimaryGeneratedColumn,
   CreateDateColumn,
   UpdateDateColumn,
+  ManyToOne,
 } from 'typeorm';
 
 export enum OrderStatus {
@@ -50,4 +52,13 @@ export class Order {
 
   @UpdateDateColumn()
   updatedAt: Date;
+
+  @Column({ type: 'float' })
+  lat: number;
+
+  @Column({ type: 'float' })
+  lng: number;
+
+  @ManyToOne(() => Specialist, { nullable: true })
+  assignedSpecialist?: number;
 }

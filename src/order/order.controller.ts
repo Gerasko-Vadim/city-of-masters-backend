@@ -13,6 +13,7 @@ import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { OrderService } from './order.service';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
+import { AcceptOrderDto } from './dto/accept-order.dto';
 
 @Controller('order')
 export class OrderController {
@@ -49,5 +50,10 @@ export class OrderController {
   @Delete(':id')
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.orderService.remove(id);
+  }
+
+  @Post('orders/accept')
+  accept(@Body() dto: AcceptOrderDto) {
+    return this.orderService.acceptByTelegram(dto);
   }
 }
