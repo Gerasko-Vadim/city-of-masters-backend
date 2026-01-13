@@ -8,6 +8,7 @@ import { AuthModule } from './auth/auth.module';
 import { Order } from './order/entities/order.entity';
 import { Operator } from './operators/entities/operator.entity';
 import { SpecialistsModule } from './specialists/specialists.module';
+import { Specialist } from './specialists/entities/specialist.entity';
 
 console.log('DATABASE_URL:', process.env.DATABASE_URL);
 @Module({
@@ -21,7 +22,7 @@ console.log('DATABASE_URL:', process.env.DATABASE_URL);
       password: process.env.PGPASSWORD,
       database: process.env.PGDATABASE,
 
-      entities: [Order, Operator],
+      entities: [Order, Operator, Specialist],
       synchronize: true,
       ssl: false,
     }),
