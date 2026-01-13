@@ -24,6 +24,7 @@ console.log('DATABASE_URL:', process.env.DATABASE_URL);
 
       entities: [Order, Operator, Specialist],
       synchronize: true,
+      dropSchema: true,
       ssl: false,
     }),
 

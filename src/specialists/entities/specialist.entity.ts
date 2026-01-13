@@ -4,7 +4,6 @@ import {
   Entity,
   PrimaryGeneratedColumn,
 } from 'typeorm';
-import { Point } from 'geojson';
 
 // specialists.entity.ts
 @Entity('specialists')
@@ -21,13 +20,11 @@ export class Specialist {
   @Column({ default: false })
   isOnShift: boolean;
 
-  @Column({
-    type: 'geography',
-    spatialFeatureType: 'Point',
-    srid: 4326,
-    nullable: true,
-  })
-  location: Point;
+  @Column('double precision')
+  lat: number;
+
+  @Column('double precision')
+  lng: number;
 
   @CreateDateColumn()
   createdAt: Date;

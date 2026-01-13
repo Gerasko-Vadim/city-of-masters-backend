@@ -58,17 +58,17 @@ export class OrderService {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-return
     return this.orderRepository.query(
       `
-    SELECT o.*
-    FROM orders o
-    JOIN specialists s ON s.id = $1
-    WHERE o.status = 'new'
-    AND ST_DWithin(
-      o.location,
-      s.location,
-      $2
-    )
-    ORDER BY ST_Distance(o.location, s.location)
-    LIMIT 5
+SELECT *,
+  6371 * acos(
+    cos(radians(:lat)) *
+    cos(radians(order.lat)) *
+    cos(radians(order.lng) - radians(:lng)) +
+    sin(radians(:lat)) *
+    sin(radians(order.lat))
+  ) AS distance
+FROM orders
+HAVING distance < 5
+ORDER BY distance;
     `,
       [specialistId, radiusMeters],
     );
