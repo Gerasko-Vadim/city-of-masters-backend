@@ -4,6 +4,7 @@ import {
   Entity,
   PrimaryGeneratedColumn,
 } from 'typeorm';
+import { Point } from 'geojson';
 
 // specialists.entity.ts
 @Entity('specialists')
@@ -26,7 +27,7 @@ export class Specialist {
     srid: 4326,
     nullable: true,
   })
-  location: string; // POINT(lng lat)
+  location: Point;
 
   @CreateDateColumn()
   createdAt: Date;

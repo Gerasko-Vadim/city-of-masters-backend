@@ -39,7 +39,10 @@ export class SpecialistsService {
     if (!specialist) throw new NotFoundException();
 
     specialist.isOnShift = true;
-    specialist.location = `POINT(${dto.lng} ${dto.lat})`;
+    specialist.location = {
+      type: 'Point',
+      coordinates: [dto.lng, dto.lat], // ВАЖНО: lng, lat
+    };
 
     return this.repo.save(specialist);
   }
