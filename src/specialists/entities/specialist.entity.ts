@@ -20,11 +20,11 @@ export class Specialist {
   @Column({ default: false })
   isOnShift: boolean;
 
-  @Column('double precision')
-  lat: number;
+  @Column({ type: 'float', nullable: true })
+  lat: number | null;
 
-  @Column('double precision')
-  lng: number;
+  @Column({ type: 'float', nullable: true })
+  lng: number | null;
 
   @CreateDateColumn()
   createdAt: Date;
