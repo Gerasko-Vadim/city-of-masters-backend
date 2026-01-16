@@ -3,9 +3,10 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { SpecialistsService } from './specialists.service';
 import { Specialist } from './entities/specialist.entity';
 import { SpecialistsController } from './specialists.controller';
+import { OrderModule } from 'src/order/order.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Specialist])],
+  imports: [TypeOrmModule.forFeature([Specialist]), OrderModule],
   controllers: [SpecialistsController],
   providers: [SpecialistsService],
   exports: [SpecialistsService],

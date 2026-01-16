@@ -9,5 +9,6 @@ import { SpecialistsModule } from 'src/specialists/specialists.module';
   imports: [TypeOrmModule.forFeature([Order]), SpecialistsModule],
   controllers: [OrderController],
   providers: [OrderService],
+  exports: [OrderService],
 })
 export class OrderModule {}
