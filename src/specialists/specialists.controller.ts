@@ -10,8 +10,8 @@ export class SpecialistsController {
     private readonly orderService: OrderService,
   ) {}
   @Post('register')
-  async register(@Body('telegramId') telegramId: number) {
-    return this.specialistsService.register({ telegramId });
+  async register(@Body() dto: { telegramId: number; name?: string }) {
+    return this.specialistsService.register(dto);
   }
 
   @Post('location')
