@@ -41,12 +41,6 @@ export class Order {
   @Column({ type: 'text', nullable: true })
   description?: string;
 
-  @Column({ nullable: true })
-  assignedWorker?: string;
-
-  @Column({ nullable: true })
-  paymentMethod?: string;
-
   @CreateDateColumn()
   createdAt: Date;
 

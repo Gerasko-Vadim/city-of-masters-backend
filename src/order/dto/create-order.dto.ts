@@ -2,11 +2,9 @@ import {
   IsString,
   IsNumber,
   IsOptional,
-  IsEnum,
   IsDateString,
   Min,
 } from 'class-validator';
-import { OrderStatus } from '../entities/order.entity';
 
 export class CreateOrderDto {
   @IsString()
@@ -22,10 +20,6 @@ export class CreateOrderDto {
   @Min(0)
   totalAmount: number;
 
-  @IsEnum(OrderStatus)
-  @IsOptional()
-  status?: OrderStatus;
-
   @IsDateString()
   @IsOptional()
   scheduledAt?: string;
@@ -34,11 +28,9 @@ export class CreateOrderDto {
   @IsOptional()
   description?: string;
 
-  @IsString()
-  @IsOptional()
-  assignedWorker?: string;
+  @IsNumber()
+  lat: number;
 
-  @IsString()
-  @IsOptional()
-  paymentMethod?: string;
+  @IsNumber()
+  lng: number;
 }

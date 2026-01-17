@@ -44,4 +44,11 @@ export class SpecialistsService {
 
     return this.repo.save(specialist);
   }
+
+  async findOnShift() {
+    return this.repo.find({
+      where: { isOnShift: true },
+      select: ['id', 'name', 'lat', 'lng'],
+    });
+  }
 }

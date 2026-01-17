@@ -32,4 +32,9 @@ export class SpecialistsController {
   acceptOrder(@Body() dto: AcceptOrderDto) {
     return this.orderService.acceptByTelegram(dto);
   }
+
+  @Get('on-shift')
+  getOnShift() {
+    return this.specialistsService.findOnShift();
+  }
 }
