@@ -52,11 +52,13 @@ export class OrderController {
     return this.orderService.remove(id);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Get('nearby')
   getNearbyOrders(@Query('telegramId') telegramId: number) {
     return this.orderService.findNearbyOrders(telegramId);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post(':id/assign')
   assign(@Param('id') id: number, @Body() body) {
     return this.orderService.assign(id, body.telegramId);
