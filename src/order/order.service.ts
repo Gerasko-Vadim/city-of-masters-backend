@@ -73,24 +73,27 @@ export class OrderService {
     return this.orderRepository.remove(order);
   }
 
-  async findNearbyOrders(specialistId: number, radiusMeters = 5000) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-    return this.orderRepository.query(
-      `
-SELECT *,
-  6371 * acos(
-    cos(radians(:lat)) *
-    cos(radians(order.lat)) *
-    cos(radians(order.lng) - radians(:lng)) +
-    sin(radians(:lat)) *
-    sin(radians(order.lat))
-  ) AS distance
-FROM orders
-HAVING distance < 5
-ORDER BY distance;
+  async findNearbyOrders(telegramId: number) {
+    const specialist =
+      await this.specialistsService.findByTelegramId(telegramId);
+    if (!specialist || !specialist.lat || !specialist.lng) return [];
+
+    const radiusKm = 5;
+
+    return this.orderRepository
+      .createQueryBuilder('order')
+      .where(
+        `
+      6371 * acos(
+        cos(radians(:lat)) * cos(radians(order.lat)) *
+        cos(radians(order.lng) - radians(:lng)) +
+        sin(radians(:lat)) * sin(radians(order.lat))
+      ) < :radius
     `,
-      [specialistId, radiusMeters],
-    );
+        { lat: specialist.lat, lng: specialist.lng, radius: radiusKm },
+      )
+      .andWhere('order.status = :status', { status: 'NEW' })
+      .getMany();
   }
 
   async assign(orderId: number, telegramId: number) {

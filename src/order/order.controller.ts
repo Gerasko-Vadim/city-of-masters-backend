@@ -8,6 +8,7 @@ import {
   Body,
   ParseIntPipe,
   UseGuards,
+  Query,
 } from '@nestjs/common';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
@@ -49,6 +50,11 @@ export class OrderController {
   @Delete(':id')
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.orderService.remove(id);
+  }
+
+  @Get('nearby')
+  getNearbyOrders(@Query('telegramId') telegramId: number) {
+    return this.orderService.findNearbyOrders(telegramId);
   }
 
   @Post(':id/assign')
