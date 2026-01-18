@@ -51,4 +51,21 @@ export class SpecialistsService {
       select: ['id', 'name', 'lat', 'lng'],
     });
   }
+
+  async findNearbySpecialists(lat: number, lng: number, radiusKm = 5) {
+    return this.repo
+      .createQueryBuilder('s')
+      .where('s.isOnShift = true')
+      .andWhere('s.lat IS NOT NULL AND s.lng IS NOT NULL')
+      .andWhere(
+        `
+      earth_distance(
+        ll_to_earth(:lat, :lng),
+        ll_to_earth(s.lat, s.lng)
+      ) < :radius
+    `,
+        { lat, lng, radius: radiusKm * 1000 },
+      )
+      .getMany();
+  }
 }

@@ -1,17 +1,16 @@
 import {
-  BadRequestException,
   forwardRef,
   Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DeepPartial, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { Order, OrderStatus } from './entities/order.entity';
-import { AcceptOrderDto } from './dto/accept-order.dto';
 import { SpecialistsService } from 'src/specialists/specialists.service';
+import { TelegramService } from 'src/telegram/telegram.sevice';
 
 @Injectable()
 export class OrderService {
@@ -20,14 +19,31 @@ export class OrderService {
     private orderRepository: Repository<Order>,
     @Inject(forwardRef(() => SpecialistsService))
     private readonly specialistsService: SpecialistsService,
+    private readonly telegramService: TelegramService,
   ) {}
 
   // Создание заказа
 
-  async create(createOrderDto: CreateOrderDto): Promise<Order> {
-    const orderData: DeepPartial<Order> = { ...createOrderDto };
-    const order = this.orderRepository.create(orderData);
-    return this.orderRepository.save(order);
+  // async create(createOrderDto: CreateOrderDto): Promise<Order> {
+  //   const orderData: DeepPartial<Order> = { ...createOrderDto };
+  //   const order = this.orderRepository.create(orderData);
+  //   return this.orderRepository.save(order);
+  // }
+
+  async create(dto: CreateOrderDto) {
+    const order = await this.orderRepository.save(dto);
+
+    const specialists = await this.specialistsService.findNearbySpecialists(
+      order.lat,
+      order.lng,
+      5,
+    );
+
+    for (const s of specialists) {
+      await this.telegramService.sendOrderToSpecialist(s.telegramId, order);
+    }
+
+    return order;
   }
 
   // Получение всех заказов
@@ -77,27 +93,18 @@ ORDER BY distance;
     );
   }
 
-  async assignToSpecialist(orderId: number, specialistId: number) {
+  async assign(orderId: number, telegramId: number) {
+    const specialist =
+      await this.specialistsService.findByTelegramId(telegramId);
     const order = await this.orderRepository.findOneBy({ id: orderId });
 
-    if (!order || order.status !== OrderStatus.NEW) {
-      throw new BadRequestException('Order unavailable');
+    if (!order) {
+      throw new NotFoundException('Order not found');
     }
 
     order.status = OrderStatus.IN_PROGRESS;
-    order.assignedSpecialist = specialistId;
+    order.assignedSpecialist = specialist?.telegramId;
 
     return this.orderRepository.save(order);
-  }
-  async acceptByTelegram(dto: AcceptOrderDto) {
-    const specialist = await this.specialistsService.findByTelegramId(
-      dto.telegramId,
-    );
-
-    if (!specialist) {
-      throw new NotFoundException('Specialist not found');
-    }
-
-    return this.assignToSpecialist(dto.orderId, specialist.id);
   }
 }

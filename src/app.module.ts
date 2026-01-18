@@ -9,6 +9,7 @@ import { Order } from './order/entities/order.entity';
 import { Operator } from './operators/entities/operator.entity';
 import { SpecialistsModule } from './specialists/specialists.module';
 import { Specialist } from './specialists/entities/specialist.entity';
+import { TelegramModule } from './telegram/telegram.module';
 
 console.log('DATABASE_URL:', process.env.DATABASE_URL);
 @Module({
@@ -31,6 +32,7 @@ console.log('DATABASE_URL:', process.env.DATABASE_URL);
     OperatorsModule,
     AuthModule,
     SpecialistsModule,
+    TelegramModule,
   ],
   controllers: [AppController],
   providers: [AppService],

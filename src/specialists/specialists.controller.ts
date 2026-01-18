@@ -1,5 +1,4 @@
 import { Body, Controller, Get, Post, Query } from '@nestjs/common';
-import { AcceptOrderDto } from 'src/order/dto/accept-order.dto';
 import { SpecialistsService } from './specialists.service';
 import { OrderService } from 'src/order/order.service';
 
@@ -26,11 +25,6 @@ export class SpecialistsController {
   @Get('orders/nearby')
   getNearbyOrders(@Query('telegramId') telegramId: number) {
     return this.orderService.findNearbyOrders(telegramId);
-  }
-
-  @Post('orders/accept')
-  acceptOrder(@Body() dto: AcceptOrderDto) {
-    return this.orderService.acceptByTelegram(dto);
   }
 
   @Get('on-shift')
