@@ -41,13 +41,21 @@ import redisConfig from './config/redis.config';
     }),
     BullModule.forRootAsync({
       imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => ({
-        redis: {
-          host: configService.get('redis.host'),
-          port: configService.get('redis.port'),
-          password: configService.get('redis.password'),
-        },
-      }),
+      useFactory: (configService: ConfigService) => {
+        const url = configService.get<string>('redis.url');
+        if (url) {
+          return {
+            url, // Bull supports 'url' property in options to connect
+          };
+        }
+        return {
+          redis: {
+            host: configService.get('redis.host'),
+            port: configService.get('redis.port'),
+            password: configService.get('redis.password'),
+          },
+        };
+      },
       inject: [ConfigService],
     }),
     OrderModule,
