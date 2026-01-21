@@ -7,7 +7,9 @@ export default registerAs('database', () => ({
   username: process.env.PGUSER || process.env.DB_USER || 'postgres',
   password: process.env.PGPASSWORD || process.env.DB_PASSWORD || 'postgres',
   database: process.env.PGDATABASE || process.env.DB_NAME || 'city_of_masters',
-  synchronize: process.env.NODE_ENV !== 'production',
+  synchronize:
+    process.env.DB_SYNCHRONIZE === 'true' ||
+    process.env.NODE_ENV !== 'production',
   logging: process.env.NODE_ENV === 'development',
   ssl:
     process.env.NODE_ENV === 'production'
