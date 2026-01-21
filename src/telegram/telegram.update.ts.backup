@@ -1,0 +1,37 @@
+import { Update, Action, Ctx } from 'nestjs-telegraf';
+import { OrderService } from 'src/order/order.service';
+import type { Context } from 'telegraf';
+
+@Update()
+export class TelegramUpdate {
+  constructor(private readonly ordersService: OrderService) {}
+
+  @Action(/accept:(\d+)/)
+  async onAccept(@Ctx() ctx: Context) {
+    // Type guards for null safety
+    if (!ctx.callbackQuery || !('data' in ctx.callbackQuery)) {
+      await ctx.reply('❌ Ошибка: неверный запрос');
+      return;
+    }
+
+    if (!ctx.from) {
+      await ctx.reply('❌ Ошибка: не удалось определить пользователя');
+      return;
+    }
+
+    const data = ctx.callbackQuery.data;
+    const orderId = Number(data.split(':')[1]);
+    const telegramId = ctx.from.id;
+
+    try {
+      await this.ordersService.assign(orderId, telegramId);
+      // Remove buttons after assignment
+      await ctx.editMessageReplyMarkup(undefined);
+      await ctx.reply('🎉 Заказ закреплён за вами');
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Неизвестная ошибка';
+      await ctx.reply(`❌ ${message}`);
+    }
+  }
+}

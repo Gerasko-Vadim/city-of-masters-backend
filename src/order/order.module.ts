@@ -5,15 +5,20 @@ import { Order } from './entities/order.entity';
 import { OrderController } from './order.controller';
 import { SpecialistsModule } from 'src/specialists/specialists.module';
 import { TelegramModule } from 'src/telegram/telegram.module';
+import { BullModule } from '@nestjs/bull';
+import { redisProvider } from 'src/common/providers/redis.provider';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Order]),
+    BullModule.registerQueue({
+      name: 'orders',
+    }),
     forwardRef(() => SpecialistsModule),
     TelegramModule,
   ],
   controllers: [OrderController],
-  providers: [OrderService],
+  providers: [OrderService, redisProvider],
   exports: [OrderService],
 })
 export class OrderModule {}

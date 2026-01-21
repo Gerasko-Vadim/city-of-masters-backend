@@ -8,7 +8,6 @@ import {
   Body,
   ParseIntPipe,
   UseGuards,
-  Query,
 } from '@nestjs/common';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
@@ -54,7 +53,17 @@ export class OrderController {
 
   @UseGuards(JwtAuthGuard)
   @Post(':id/assign')
-  assign(@Param('id') id: number, @Body() body) {
+  assign(@Param('id', ParseIntPipe) id: number, @Body() body: { telegramId: number }) {
+    return this.orderService.assign(id, body.telegramId);
+  }
+
+  // Public endpoint for Telegram bot (no JWT required)
+  @Post(':id/assign-bot')
+  assignFromBot(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: { telegramId: number },
+  ) {
     return this.orderService.assign(id, body.telegramId);
   }
 }
+

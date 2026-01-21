@@ -22,6 +22,11 @@ export class SpecialistsController {
     await this.specialistsService.updateLocation({ telegramId, lat, lng });
   }
 
+  @Post('offline')
+  async setOffline(@Body('telegramId') telegramId: number) {
+    return this.specialistsService.setOffline(telegramId);
+  }
+
   @Get('orders/nearby')
   getNearbyOrders(@Query('telegramId') telegramId: number) {
     return this.orderService.findNearbyOrders(telegramId);
@@ -32,3 +37,4 @@ export class SpecialistsController {
     return this.specialistsService.findOnShift();
   }
 }
+

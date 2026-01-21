@@ -2,11 +2,14 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   PrimaryGeneratedColumn,
 } from 'typeorm';
 
 // specialists.entity.ts
 @Entity('specialists')
+@Index(['lat', 'lng']) // Composite index for geospatial queries
+@Index(['isOnShift']) // Index for filtering active specialists
 export class Specialist {
   @PrimaryGeneratedColumn()
   id: number;

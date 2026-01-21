@@ -1,4 +1,5 @@
 import {
+  ConflictException,
   forwardRef,
   Inject,
   Injectable,
@@ -10,7 +11,11 @@ import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { Order, OrderStatus } from './entities/order.entity';
 import { SpecialistsService } from 'src/specialists/specialists.service';
-import { TelegramService } from 'src/telegram/telegram.sevice';
+import { TelegramService } from 'src/telegram/telegram.service';
+import { InjectQueue } from '@nestjs/bull';
+import type { Queue } from 'bull';
+import type Redis from 'ioredis';
+import { REDIS_CLIENT } from 'src/common/providers/redis.provider';
 
 @Injectable()
 export class OrderService {
@@ -20,28 +25,20 @@ export class OrderService {
     @Inject(forwardRef(() => SpecialistsService))
     private readonly specialistsService: SpecialistsService,
     private readonly telegramService: TelegramService,
+    @Inject(REDIS_CLIENT)
+    private readonly redis: Redis,
+    @InjectQueue('orders')
+    private readonly telegramQueue: Queue,
   ) {}
-
-  // Создание заказа
-
-  // async create(createOrderDto: CreateOrderDto): Promise<Order> {
-  //   const orderData: DeepPartial<Order> = { ...createOrderDto };
-  //   const order = this.orderRepository.create(orderData);
-  //   return this.orderRepository.save(order);
-  // }
 
   async create(dto: CreateOrderDto) {
     const order = await this.orderRepository.save(dto);
 
-    const specialists = await this.specialistsService.findNearbySpecialists(
-      order.lat,
-      order.lng,
-      5,
-    );
-
-    for (const s of specialists) {
-      await this.telegramService.sendOrderToSpecialist(s.telegramId, order);
-    }
+    await this.telegramQueue.add('new-order', {
+      orderId: order.id,
+      lat: order.lat,
+      lng: order.lng,
+    });
 
     return order;
   }
@@ -96,18 +93,57 @@ export class OrderService {
       .getMany();
   }
 
+  // async assign(orderId: number, telegramId: number) {
+  //   const specialist =
+  //     await this.specialistsService.findByTelegramId(telegramId);
+  //   const order = await this.orderRepository.findOneBy({ id: orderId });
+
+  //   if (!order) {
+  //     throw new NotFoundException('Order not found');
+  //   }
+
+  //   order.status = OrderStatus.IN_PROGRESS;
+  //   order.assignedSpecialist = specialist?.telegramId;
+
+  //   return this.orderRepository.save(order);
+  // }
+
   async assign(orderId: number, telegramId: number) {
-    const specialist =
-      await this.specialistsService.findByTelegramId(telegramId);
-    const order = await this.orderRepository.findOneBy({ id: orderId });
+    const lockKey = `order:lock:${orderId}`;
+    // Try to acquire lock with 10 second expiration
+    const lock = await this.redis.set(
+      lockKey,
+      String(telegramId),
+      'PX',
+      10000,
+      'NX',
+    );
 
-    if (!order) {
-      throw new NotFoundException('Order not found');
+    if (!lock) throw new ConflictException('Order already taken');
+
+    try {
+      const order = await this.orderRepository.findOneBy({ id: orderId });
+
+      if (!order || order.status !== OrderStatus.NEW) {
+        // Release lock if order is invalid
+        await this.redis.del(lockKey);
+        throw new ConflictException('Order not available');
+      }
+
+      order.status = OrderStatus.IN_PROGRESS;
+      order.assignedSpecialistId = telegramId;
+      return await this.orderRepository.save(order);
+    } catch (error) {
+      // Release lock on error
+      await this.redis.del(lockKey);
+      throw error;
     }
+  }
 
-    order.status = OrderStatus.IN_PROGRESS;
-    order.assignedSpecialist = specialist?.telegramId;
-
-    return this.orderRepository.save(order);
+  async notifySpecialist(telegramId: number, order: Order) {
+    await this.telegramQueue.add('send-order', {
+      telegramId,
+      order,
+    });
   }
 }

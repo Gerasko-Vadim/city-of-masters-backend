@@ -1,11 +1,10 @@
-import { Specialist } from 'src/specialists/entities/specialist.entity';
 import {
   Entity,
   Column,
   PrimaryGeneratedColumn,
   CreateDateColumn,
   UpdateDateColumn,
-  ManyToOne,
+  Index,
 } from 'typeorm';
 
 export enum OrderStatus {
@@ -16,6 +15,9 @@ export enum OrderStatus {
 }
 
 @Entity()
+@Index(['status']) // Index for filtering by status
+@Index(['lat', 'lng']) // Composite index for geospatial queries
+@Index(['status', 'createdAt']) // Composite index for common queries
 export class Order {
   @PrimaryGeneratedColumn()
   id: number;
@@ -53,6 +55,9 @@ export class Order {
   @Column({ type: 'float' })
   lng: number;
 
-  @ManyToOne(() => Specialist, { nullable: true })
-  assignedSpecialist?: number;
+  @Column({ type: 'int', nullable: true })
+  assignedSpecialistId?: number;
+
+  @Column('jsonb', { default: [] })
+  notifiedSpecialists: { telegramId: number; messageId: number }[];
 }

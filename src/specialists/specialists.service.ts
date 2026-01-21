@@ -68,4 +68,19 @@ export class SpecialistsService {
       )
       .getMany();
   }
+
+  async setOffline(telegramId: number) {
+    const specialist = await this.repo.findOneBy({ telegramId });
+
+    if (!specialist) {
+      throw new NotFoundException('Specialist not found');
+    }
+
+    specialist.isOnShift = false;
+    specialist.lat = null;
+    specialist.lng = null;
+
+    return this.repo.save(specialist);
+  }
 }
+

@@ -9,7 +9,11 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   app.enableCors({
-    origin: ['http://localhost:3000'],
+    origin: [
+      'http://localhost:3000',
+      'http://localhost:3001', // Next.js default dev port
+      process.env.WEB_PANEL_URL || '*',
+    ],
     credentials: true,
   });
 
@@ -30,4 +34,7 @@ async function bootstrap() {
   console.log('Server is running on http://localhost:3000');
 }
 
-bootstrap();
+bootstrap().catch((err) => {
+  console.error('Failed to start application:', err);
+  process.exit(1);
+});
