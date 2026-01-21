@@ -15,7 +15,7 @@ import { redisProvider } from 'src/common/providers/redis.provider';
       name: 'orders',
     }),
     forwardRef(() => SpecialistsModule),
-    TelegramModule,
+    forwardRef(() => TelegramModule),
   ],
   controllers: [OrderController],
   providers: [OrderService, redisProvider],

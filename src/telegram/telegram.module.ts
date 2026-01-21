@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { TelegramService } from './telegram.service';
 import { TelegramProcessor } from './telegram.processor';
 import { BullModule } from '@nestjs/bull';
@@ -11,9 +11,10 @@ import { OrderModule } from 'src/order/order.module';
       name: 'orders',
     }),
     SpecialistsModule,
-    OrderModule,
+    forwardRef(() => OrderModule),
   ],
   providers: [TelegramService, TelegramProcessor],
   exports: [TelegramService],
 })
 export class TelegramModule {}
+
