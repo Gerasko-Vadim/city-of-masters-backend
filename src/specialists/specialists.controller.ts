@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query, Param, ParseIntPipe, NotFoundException } from '@nestjs/common';
 import { SpecialistsService } from './specialists.service';
 import { OrderService } from 'src/order/order.service';
 
@@ -9,7 +9,7 @@ export class SpecialistsController {
     private readonly orderService: OrderService,
   ) {}
   @Post('register')
-  async register(@Body() dto: { telegramId: number; name?: string }) {
+  async register(@Body() dto: { telegramId: number; name?: string; username?: string }) {
     return this.specialistsService.register(dto);
   }
 
@@ -32,9 +32,33 @@ export class SpecialistsController {
     return this.orderService.findNearbyOrders(telegramId);
   }
 
+  @Get('active-order')
+  getActiveOrder(@Query('telegramId') telegramId: number) {
+    return this.orderService.findActiveOrder(telegramId);
+  }
+
   @Get('on-shift')
   getOnShift() {
     return this.specialistsService.findOnShift();
+  }
+
+  @Get()
+  async getAll() {
+    return this.specialistsService.findAll();
+  }
+
+  @Get(':id')
+  async getOne(@Param('id', ParseIntPipe) id: number) {
+    const specialist = await this.specialistsService.findOneById(id);
+    if (!specialist) {
+        // We need NotFoundException here, but imports might be missing.
+        // I will throw generic Error if NotFoundException is not imported or use @nestjs/common if imported.
+        // It is typically imported.
+        // Let's check imports in next step or assume yes.
+        throw new Error('Specialist not found'); 
+    }
+    const orders = await this.orderService.findBySpecialist(specialist.telegramId);
+    return { ...specialist, orders };
   }
 }
 

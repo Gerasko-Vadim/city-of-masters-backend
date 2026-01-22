@@ -16,16 +16,29 @@ export class SpecialistsService {
     return this.repo.findOne({ where: { telegramId } });
   }
 
+  async findAll() {
+    return this.repo.find({ order: { createdAt: 'DESC' } });
+  }
+
+  async findOneById(id: number) {
+    return this.repo.findOne({ where: { id } });
+  }
+
   async register(dto: RegisterTelegramDto) {
     let specialist = await this.repo.findOne({
       where: { telegramId: dto.telegramId },
     });
 
-    if (specialist) return specialist;
+    if (specialist) {
+        specialist.username = dto.username || specialist.username;
+        specialist.name = dto.name || specialist.name;
+        return this.repo.save(specialist);
+    }
 
     specialist = this.repo.create({
       telegramId: dto.telegramId,
       name: dto.name,
+      username: dto.username,
     });
 
     return this.repo.save(specialist);

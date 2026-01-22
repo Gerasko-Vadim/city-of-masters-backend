@@ -16,6 +16,7 @@ import { InjectQueue } from '@nestjs/bull';
 import type { Queue } from 'bull';
 import type Redis from 'ioredis';
 import { REDIS_CLIENT } from 'src/common/providers/redis.provider';
+import { EventsGateway } from 'src/events/events.gateway';
 
 @Injectable()
 export class OrderService {
@@ -29,6 +30,7 @@ export class OrderService {
     private readonly redis: Redis,
     @InjectQueue('orders')
     private readonly telegramQueue: Queue,
+    private readonly eventsGateway: EventsGateway,
   ) {}
 
   async create(dto: CreateOrderDto) {
@@ -39,6 +41,8 @@ export class OrderService {
       lat: order.lat,
       lng: order.lng,
     });
+
+    this.eventsGateway.sendOrderUpdate(order);
 
     return order;
   }
@@ -61,7 +65,9 @@ export class OrderService {
   async update(id: number, updateOrderDto: UpdateOrderDto): Promise<Order> {
     const order = await this.findOne(id);
     Object.assign(order, updateOrderDto);
-    return this.orderRepository.save(order);
+    const savedOrder = await this.orderRepository.save(order);
+    this.eventsGateway.sendOrderUpdate(savedOrder);
+    return savedOrder;
   }
 
   // Удаление заказа
@@ -132,7 +138,9 @@ export class OrderService {
 
       order.status = OrderStatus.IN_PROGRESS;
       order.assignedSpecialistId = telegramId;
-      return await this.orderRepository.save(order);
+      const savedOrder = await this.orderRepository.save(order);
+      this.eventsGateway.sendOrderUpdate(savedOrder);
+      return savedOrder;
     } catch (error) {
       // Release lock on error
       await this.redis.del(lockKey);
@@ -145,5 +153,38 @@ export class OrderService {
       telegramId,
       order,
     });
+  }
+
+  async findActiveOrder(telegramId: number): Promise<Order | null> {
+    return this.orderRepository.findOne({
+      where: {
+        assignedSpecialistId: telegramId,
+        status: OrderStatus.IN_PROGRESS,
+      },
+    });
+  }
+
+  async findBySpecialist(telegramId: number): Promise<Order[]> {
+    return this.orderRepository.find({
+      where: { assignedSpecialistId: telegramId },
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  async completeByBot(orderId: number, telegramId: number): Promise<Order> {
+    const order = await this.findOne(orderId);
+
+    if (order.assignedSpecialistId !== telegramId) {
+      throw new ConflictException('You are not assigned to this order');
+    }
+
+    if (order.status !== OrderStatus.IN_PROGRESS) {
+      throw new ConflictException('Order is not in progress');
+    }
+
+    order.status = OrderStatus.COMPLETED;
+    const savedOrder = await this.orderRepository.save(order);
+    this.eventsGateway.sendOrderUpdate(savedOrder);
+    return savedOrder;
   }
 }

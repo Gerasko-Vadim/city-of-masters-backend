@@ -65,5 +65,13 @@ export class OrderController {
   ) {
     return this.orderService.assign(id, body.telegramId);
   }
+
+  @Post(':id/complete-bot')
+  completeFromBot(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: { telegramId: number },
+  ) {
+    return this.orderService.completeByBot(id, body.telegramId);
+  }
 }
 

@@ -15,6 +15,7 @@ import { QueueModule } from './queue/queue.module';
 import { BullModule } from '@nestjs/bull';
 import databaseConfig from './config/database.config';
 import redisConfig from './config/redis.config';
+import { EventsModule } from './events/events.module';
 
 @Module({
   imports: [
@@ -57,6 +58,7 @@ import redisConfig from './config/redis.config';
     SpecialistsModule,
     TelegramModule,
     QueueModule,
+    EventsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
