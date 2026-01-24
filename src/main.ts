@@ -13,9 +13,13 @@ async function bootstrap() {
     credentials: true,
   });
 
-  // ✅ Seed admin
-  const dataSource = app.get(DataSource);
-  await seedAdmin(dataSource);
+  // ✅ Seed admin (wrapped in try-catch to prevent startup crash if DB is not ready)
+  try {
+    const dataSource = app.get(DataSource);
+    await seedAdmin(dataSource);
+  } catch (error) {
+    console.error('Failed to seed admin user:', error.message);
+  }
 
   // Глобальная валидация DTO
   app.useGlobalPipes(
