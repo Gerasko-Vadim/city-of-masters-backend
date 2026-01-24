@@ -26,18 +26,33 @@ import { EventsModule } from './events/events.module';
     }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => ({
-        type: 'postgres',
-        host: configService.get('database.host'),
-        port: configService.get('database.port'),
-        username: configService.get('database.username'),
-        password: configService.get('database.password'),
-        database: configService.get('database.database'),
-        entities: [Order, Operator, Specialist],
-        synchronize: configService.get('database.synchronize'),
-        logging: configService.get('database.logging'),
-        ssl: configService.get('database.ssl'),
-      }),
+      useFactory: (configService: ConfigService) => {
+        const url = configService.get('database.url');
+        const commonConfig = {
+          entities: [Order, Operator, Specialist],
+          synchronize: configService.get('database.synchronize'),
+          logging: configService.get('database.logging'),
+          ssl: configService.get('database.ssl'),
+        };
+
+        if (url) {
+          return {
+            type: 'postgres',
+            url,
+            ...commonConfig,
+          };
+        }
+
+        return {
+          type: 'postgres',
+          host: configService.get('database.host'),
+          port: configService.get('database.port'),
+          username: configService.get('database.username'),
+          password: configService.get('database.password'),
+          database: configService.get('database.database'),
+          ...commonConfig,
+        };
+      },
       inject: [ConfigService],
     }),
     BullModule.forRootAsync({
