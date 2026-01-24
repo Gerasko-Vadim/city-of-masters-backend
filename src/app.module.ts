@@ -1,5 +1,4 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { OrderModule } from './order/order.module';
@@ -13,64 +12,29 @@ import { Specialist } from './specialists/entities/specialist.entity';
 import { TelegramModule } from './telegram/telegram.module';
 import { QueueModule } from './queue/queue.module';
 import { BullModule } from '@nestjs/bull';
-import databaseConfig from './config/database.config';
-import redisConfig from './config/redis.config';
 import { EventsModule } from './events/events.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({
-      isGlobal: true,
-      load: [databaseConfig, redisConfig],
-      envFilePath: '.env',
+    TypeOrmModule.forRoot({
+      type: 'postgres',
+      url: process.env.DATABASE_URL,
+      host: process.env.PGHOST || 'localhost',
+      port: parseInt(process.env.PGPORT || '5432', 10),
+      username: process.env.PGUSER || 'postgres',
+      password: process.env.PGPASSWORD || 'postgres',
+      database: process.env.PGDATABASE || 'city_of_masters',
+      entities: [Order, Operator, Specialist],
+      synchronize: process.env.DB_SYNCHRONIZE === 'true' || process.env.NODE_ENV !== 'production',
+      logging: process.env.NODE_ENV === 'development',
+      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
     }),
-    TypeOrmModule.forRootAsync({
-      imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => {
-        const url = configService.get('database.url');
-        const commonConfig = {
-          entities: [Order, Operator, Specialist],
-          synchronize: configService.get('database.synchronize'),
-          logging: configService.get('database.logging'),
-          ssl: configService.get('database.ssl'),
-        };
-
-        if (url) {
-          return {
-            type: 'postgres',
-            url,
-            ...commonConfig,
-          };
-        }
-
-        return {
-          type: 'postgres',
-          host: configService.get('database.host'),
-          port: configService.get('database.port'),
-          username: configService.get('database.username'),
-          password: configService.get('database.password'),
-          database: configService.get('database.database'),
-          ...commonConfig,
-        };
+    BullModule.forRoot({
+      redis: process.env.REDIS_URL || {
+        host: process.env.REDISHOST || process.env.REDIS_HOST || '127.0.0.1',
+        port: parseInt(process.env.REDISPORT || process.env.REDIS_PORT || '6379', 10),
+        password: process.env.REDISPASSWORD || process.env.REDIS_PASSWORD,
       },
-      inject: [ConfigService],
-    }),
-    BullModule.forRootAsync({
-      imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => {
-        const url = configService.get('redis.url');
-        if (url) {
-          return { redis: url };
-        }
-        return {
-          redis: {
-            host: configService.get('redis.host'),
-            port: configService.get('redis.port'),
-            password: configService.get('redis.password'),
-          },
-        };
-      },
-      inject: [ConfigService],
     }),
     OrderModule,
     OperatorsModule,
