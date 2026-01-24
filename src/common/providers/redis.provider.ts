@@ -7,7 +7,10 @@ export const REDIS_CLIENT = 'REDIS_CLIENT';
 export const redisProvider: Provider = {
   provide: REDIS_CLIENT,
   useFactory: (configService: ConfigService) => {
-    const redis = new Redis({
+    const url = configService.get('redis.url');
+    const redis = url ? new Redis(url, {
+      retryStrategy: (times) => Math.min(times * 50, 2000),
+    }) : new Redis({
       host: configService.get('redis.host'),
       port: configService.get('redis.port'),
       password: configService.get('redis.password'),

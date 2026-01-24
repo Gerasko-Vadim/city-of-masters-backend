@@ -42,14 +42,19 @@ import { EventsModule } from './events/events.module';
     }),
     BullModule.forRootAsync({
       imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => ({
-        redis: {
-          host: configService.get('redis.host'),
-          port: configService.get('redis.port'),
-          password: configService.get('redis.password'),
-          username: configService.get('redis.username'),
-        },
-      }),
+      useFactory: (configService: ConfigService) => {
+        const url = configService.get('redis.url');
+        if (url) {
+          return { redis: url };
+        }
+        return {
+          redis: {
+            host: configService.get('redis.host'),
+            port: configService.get('redis.port'),
+            password: configService.get('redis.password'),
+          },
+        };
+      },
       inject: [ConfigService],
     }),
     OrderModule,
