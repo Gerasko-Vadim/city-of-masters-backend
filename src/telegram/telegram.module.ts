@@ -17,4 +17,3 @@ import { OrderModule } from 'src/order/order.module';
   exports: [TelegramService],
 })
 export class TelegramModule {}
-

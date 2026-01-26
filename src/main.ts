@@ -19,6 +19,16 @@ async function bootstrap() {
 
   const app = await NestFactory.create(AppModule);
 
+  // ✅ Verify database connection
+  try {
+    const dataSource = app.get(DataSource);
+    await dataSource.query('SELECT 1');
+    console.log('✅ Database connection verified successfully');
+  } catch (error) {
+    console.error('❌ Database verification failed:', error.message);
+    throw error; // Re-throw to trigger bootstrap catch
+  }
+
   app.enableCors({
     origin: true,
     credentials: true,

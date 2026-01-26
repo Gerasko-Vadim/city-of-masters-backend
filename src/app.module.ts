@@ -26,8 +26,7 @@ import { EventsModule } from './events/events.module';
 
       entities: [Order, Operator, Specialist],
       synchronize: true,
-      dropSchema: true,
-      ssl: false,
+      ssl: { rejectUnauthorized: false },
     }),
     BullModule.forRootAsync({
       useFactory: () => {
