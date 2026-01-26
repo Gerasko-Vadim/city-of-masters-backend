@@ -16,24 +16,51 @@ import { EventsModule } from './events/events.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forRoot({
-      type: 'postgres',
-      url: process.env.DATABASE_URL,
-      host: process.env.PGHOST || 'localhost',
-      port: parseInt(process.env.PGPORT || '5432', 10),
-      username: process.env.PGUSER || 'postgres',
-      password: process.env.PGPASSWORD || 'postgres',
-      database: process.env.PGDATABASE || 'city_of_masters',
-      entities: [Order, Operator, Specialist],
-      synchronize: process.env.DB_SYNCHRONIZE === 'true' || process.env.NODE_ENV !== 'production',
-      logging: process.env.NODE_ENV === 'development',
-      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+    TypeOrmModule.forRootAsync({
+      useFactory: () => {
+        const isProd = process.env.NODE_ENV === 'production';
+        const baseConfig = {
+          entities: [Order, Operator, Specialist],
+          synchronize: process.env.DB_SYNCHRONIZE === 'true' || !isProd,
+          logging: !isProd,
+          ssl: isProd ? { rejectUnauthorized: false } : false,
+        };
+
+        if (process.env.DATABASE_URL) {
+          return {
+            type: 'postgres',
+            url: process.env.DATABASE_URL,
+            ...baseConfig,
+          };
+        }
+
+        return {
+          type: 'postgres',
+          host: process.env.PGHOST || 'localhost',
+          port: parseInt(process.env.PGPORT || '5432', 10),
+          username: process.env.PGUSER || 'postgres',
+          password: process.env.PGPASSWORD || 'postgres',
+          database: process.env.PGDATABASE || 'city_of_masters',
+          ...baseConfig,
+        };
+      },
     }),
-    BullModule.forRoot({
-      redis: process.env.REDIS_URL || {
-        host: process.env.REDISHOST || process.env.REDIS_HOST || '127.0.0.1',
-        port: parseInt(process.env.REDISPORT || process.env.REDIS_PORT || '6379', 10),
-        password: process.env.REDISPASSWORD || process.env.REDIS_PASSWORD,
+    BullModule.forRootAsync({
+      useFactory: () => {
+        if (process.env.REDIS_URL) {
+          return { redis: process.env.REDIS_URL };
+        }
+        return {
+          redis: {
+            host:
+              process.env.REDISHOST || process.env.REDIS_HOST || '127.0.0.1',
+            port: parseInt(
+              process.env.REDISPORT || process.env.REDIS_PORT || '6379',
+              10,
+            ),
+            password: process.env.REDISPASSWORD || process.env.REDIS_PASSWORD,
+          },
+        };
       },
     }),
     OrderModule,

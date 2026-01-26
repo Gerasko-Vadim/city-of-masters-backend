@@ -6,6 +6,11 @@ import { DataSource } from 'typeorm';
 import { seedAdmin } from './seeds/admin.seed';
 
 async function bootstrap() {
+  console.log('--- SYSTEM STARTING ---');
+  console.log('PORT:', process.env.PORT || 3000);
+  console.log('DB_URL:', process.env.DATABASE_URL ? 'PRESENT' : 'MISSING');
+  console.log('REDIS_URL:', process.env.REDIS_URL ? 'PRESENT' : 'MISSING');
+
   const app = await NestFactory.create(AppModule);
 
   app.enableCors({
@@ -18,7 +23,7 @@ async function bootstrap() {
     const dataSource = app.get(DataSource);
     await seedAdmin(dataSource);
   } catch (error) {
-    console.error('Failed to seed admin user:', error.message);
+    console.warn('[WARNING] Failed to seed admin user:', error.message);
   }
 
   // Глобальная валидация DTO
@@ -32,10 +37,11 @@ async function bootstrap() {
 
   const port = process.env.PORT || 3000;
   await app.listen(port, '0.0.0.0');
-  console.log(`Server is running on port ${port}`);
+  console.log(`--- SUCCESS: Server is running on port ${port} ---`);
 }
 
 bootstrap().catch((err) => {
-  console.error('Failed to start application:', err);
+  console.error('--- CRITICAL FATAL ERROR DURING BOOTSTRAP ---');
+  console.error(err);
   process.exit(1);
 });
