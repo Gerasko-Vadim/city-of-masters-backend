@@ -36,11 +36,13 @@ export class OrderService {
   async create(dto: CreateOrderDto) {
     const order = await this.orderRepository.save(dto);
 
-    await this.telegramQueue.add('new-order', {
-      orderId: order.id,
-      lat: order.lat,
-      lng: order.lng,
-    });
+    if (order.status === OrderStatus.PAID) {
+      await this.telegramQueue.add('new-order', {
+        orderId: order.id,
+        lat: order.lat,
+        lng: order.lng,
+      });
+    }
 
     this.eventsGateway.sendOrderUpdate(order);
 
@@ -64,8 +66,20 @@ export class OrderService {
   // Обновление заказа
   async update(id: number, updateOrderDto: UpdateOrderDto): Promise<Order> {
     const order = await this.findOne(id);
+    const oldStatus = order.status;
+
     Object.assign(order, updateOrderDto);
     const savedOrder = await this.orderRepository.save(order);
+
+    // Если статус изменился на PAID, запускаем поиск исполнителей
+    if (oldStatus !== OrderStatus.PAID && savedOrder.status === OrderStatus.PAID) {
+      await this.telegramQueue.add('new-order', {
+        orderId: savedOrder.id,
+        lat: savedOrder.lat,
+        lng: savedOrder.lng,
+      });
+    }
+
     this.eventsGateway.sendOrderUpdate(savedOrder);
     return savedOrder;
   }
@@ -95,7 +109,7 @@ export class OrderService {
     `,
         { lat: specialist.lat, lng: specialist.lng, radius: radiusKm },
       )
-      .andWhere('order.status = :status', { status: 'NEW' })
+      .andWhere('order.status = :status', { status: OrderStatus.PAID })
       .getMany();
   }
 
@@ -130,10 +144,10 @@ export class OrderService {
     try {
       const order = await this.orderRepository.findOneBy({ id: orderId });
 
-      if (!order || order.status !== OrderStatus.NEW) {
+      if (!order || order.status !== OrderStatus.PAID) {
         // Release lock if order is invalid
         await this.redis.del(lockKey);
-        throw new ConflictException('Order not available');
+        throw new ConflictException('Order not available (must be PAID)');
       }
 
       order.status = OrderStatus.IN_PROGRESS;
