@@ -31,7 +31,7 @@ async function bootstrap() {
 
   app.enableCors({
     origin: true,
-    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   });
 
   // ✅ Seed admin (wrapped in try-catch to prevent startup crash if DB is not ready)
