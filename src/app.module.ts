@@ -16,38 +16,18 @@ import { EventsModule } from './events/events.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forRootAsync({
-      useFactory: () => {
-        const isProd = process.env.NODE_ENV === 'production';
-        const baseConfig = {
-          entities: [Order, Operator, Specialist],
-          synchronize: process.env.DB_SYNCHRONIZE === 'true' || !isProd,
-          logging: !isProd,
-          ssl: isProd ? { rejectUnauthorized: false } : false,
-        };
+    TypeOrmModule.forRoot({
+      type: 'postgres',
+      host: process.env.PGHOST,
+      port: Number(process.env.PGPORT),
+      username: process.env.PGUSER,
+      password: process.env.PGPASSWORD,
+      database: process.env.PGDATABASE,
 
-        if (process.env.DATABASE_URL) {
-          console.log('Connecting via DATABASE_URL');
-          return { 
-            type: 'postgres',
-            url: process.env.DATABASE_URL,
-            connectTimeoutMS: 5000,
-            ...baseConfig,
-          };
-        }
-
-        console.log('Connecting via PGHOST/PGPORT');
-        return {
-          type: 'postgres',
-          host: process.env.PGHOST || 'localhost',
-          port: parseInt(process.env.PGPORT || '5432', 10),
-          username: process.env.PGUSER || 'postgres',
-          password: process.env.PGPASSWORD || 'postgres',
-          database: process.env.PGDATABASE || 'city_of_masters',
-          connectTimeoutMS: 5000,
-          ...baseConfig,
-        };
-      },
+      entities: [Order, Operator, Specialist],
+      synchronize: true,
+      dropSchema: true,
+      ssl: false,
     }),
     BullModule.forRootAsync({
       useFactory: () => {
