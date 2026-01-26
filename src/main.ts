@@ -8,8 +8,14 @@ import { seedAdmin } from './seeds/admin.seed';
 async function bootstrap() {
   console.log('--- SYSTEM STARTING ---');
   console.log('PORT:', process.env.PORT || 3000);
-  console.log('DB_URL:', process.env.DATABASE_URL ? 'PRESENT' : 'MISSING');
-  console.log('REDIS_URL:', process.env.REDIS_URL ? 'PRESENT' : 'MISSING');
+  console.log('Environment Variables Check:');
+  console.log('- DATABASE_URL:', process.env.DATABASE_URL ? 'OK' : 'MISSING');
+  console.log('- PGHOST:', process.env.PGHOST ? 'OK' : 'MISSING');
+  console.log('- PGPORT:', process.env.PGPORT ? 'OK' : 'MISSING');
+  console.log('- REDIS_URL:', process.env.REDIS_URL ? 'OK' : 'MISSING');
+  console.log('- REDISHOST:', process.env.REDISHOST ? 'OK' : 'MISSING');
+  console.log('- REDISPORT:', process.env.REDISPORT ? 'OK' : 'MISSING');
+  console.log('- NODE_ENV:', process.env.NODE_ENV || 'not set');
 
   const app = await NestFactory.create(AppModule);
 

@@ -27,13 +27,16 @@ import { EventsModule } from './events/events.module';
         };
 
         if (process.env.DATABASE_URL) {
-          return {
+          console.log('Connecting via DATABASE_URL');
+          return { 
             type: 'postgres',
             url: process.env.DATABASE_URL,
+            connectTimeoutMS: 5000,
             ...baseConfig,
           };
         }
 
+        console.log('Connecting via PGHOST/PGPORT');
         return {
           type: 'postgres',
           host: process.env.PGHOST || 'localhost',
@@ -41,6 +44,7 @@ import { EventsModule } from './events/events.module';
           username: process.env.PGUSER || 'postgres',
           password: process.env.PGPASSWORD || 'postgres',
           database: process.env.PGDATABASE || 'city_of_masters',
+          connectTimeoutMS: 5000,
           ...baseConfig,
         };
       },
