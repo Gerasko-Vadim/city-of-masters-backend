@@ -13,6 +13,7 @@ import { TelegramModule } from './telegram/telegram.module';
 import { QueueModule } from './queue/queue.module';
 import { BullModule } from '@nestjs/bull';
 import { EventsModule } from './events/events.module';
+import { ChatModule } from './chat/chat.module';
 
 @Module({
   imports: [
@@ -53,6 +54,7 @@ import { EventsModule } from './events/events.module';
     TelegramModule,
     QueueModule,
     EventsModule,
+    ChatModule,
   ],
   controllers: [AppController],
   providers: [AppService],

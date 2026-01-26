@@ -30,4 +30,8 @@ export class TelegramService {
 
     return msg.message_id;
   }
+
+  async sendMessage(telegramId: number, text: string) {
+    await bot.telegram.sendMessage(telegramId, text, { parse_mode: 'HTML' });
+  }
 }
