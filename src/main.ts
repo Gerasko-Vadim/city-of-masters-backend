@@ -28,6 +28,7 @@ async function bootstrap() {
     // Manual patch for missing columns if synchronize didn't pick them up
     console.log('Checking for missing columns...');
     await dataSource.query('ALTER TABLE "order" ADD COLUMN IF NOT EXISTS "startedAt" TIMESTAMP WITH TIME ZONE');
+    await dataSource.query('ALTER TABLE "order" ADD COLUMN IF NOT EXISTS "completedAt" TIMESTAMP WITH TIME ZONE');
     console.log('Column check/patch completed');
   } catch (error) {
     console.error('❌ Database verification/patch failed:', error.message);

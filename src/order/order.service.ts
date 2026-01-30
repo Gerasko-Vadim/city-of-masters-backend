@@ -202,6 +202,7 @@ export class OrderService {
     }
 
     order.status = OrderStatus.COMPLETED;
+    order.completedAt = new Date();
     const savedOrder = await this.orderRepository.save(order);
     this.eventsGateway.sendOrderUpdate(savedOrder);
     return savedOrder;

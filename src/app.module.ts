@@ -26,7 +26,7 @@ import { ChatModule } from './chat/chat.module';
       password: process.env.PGPASSWORD,
       database: process.env.PGDATABASE,
 
-      entities: [Order, Operator, Specialist],
+      entities: [Order, Operator, Specialist, ChatMessage],
       synchronize: true,
       ssl: { rejectUnauthorized: false },
     }),

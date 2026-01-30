@@ -64,6 +64,9 @@ export class Order {
   @Column({ type: 'timestamp', nullable: true })
   startedAt?: Date;
 
+  @Column({ type: 'timestamp', nullable: true })
+  completedAt?: Date;
+
   @ManyToOne(() => Specialist, { nullable: true })
   @JoinColumn({ name: 'assignedSpecialistId', referencedColumnName: 'telegramId' })
   assignedSpecialist?: Specialist;
