@@ -32,4 +32,8 @@ export class EventsGateway
   sendOrderUpdate(order: any) {
     this.server.emit('orderUpdate', order);
   }
+
+  sendSpecialistUpdate(specialist: any) {
+    this.server.emit('specialistUpdate', specialist);
+  }
 }

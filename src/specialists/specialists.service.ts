@@ -4,12 +4,14 @@ import { Repository } from 'typeorm';
 import { Specialist } from './entities/specialist.entity';
 import { UpdateLocationDto } from './dto/update-location.dto';
 import { RegisterTelegramDto } from './dto/register-telegram.dto';
+import { EventsGateway } from 'src/events/events.gateway';
 
 @Injectable()
 export class SpecialistsService {
   constructor(
     @InjectRepository(Specialist)
     private readonly repo: Repository<Specialist>,
+    private readonly eventsGateway: EventsGateway,
   ) {}
 
   async findByTelegramId(telegramId: number) {
@@ -55,7 +57,9 @@ export class SpecialistsService {
     specialist.lat = dto.lat;
     specialist.lng = dto.lng;
 
-    return this.repo.save(specialist);
+    const saved = await this.repo.save(specialist);
+    this.eventsGateway.sendSpecialistUpdate(saved);
+    return saved;
   }
 
   async findOnShift() {
@@ -93,7 +97,9 @@ export class SpecialistsService {
     specialist.lat = null;
     specialist.lng = null;
 
-    return this.repo.save(specialist);
+    const saved = await this.repo.save(specialist);
+    this.eventsGateway.sendSpecialistUpdate(saved);
+    return saved;
   }
 }
 
