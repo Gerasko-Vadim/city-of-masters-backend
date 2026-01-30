@@ -6,6 +6,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { OperatorsModule } from './operators/operators.module';
 import { AuthModule } from './auth/auth.module';
 import { Order } from './order/entities/order.entity';
+import { ChatMessage } from './order/entities/chat-message.entity';
 import { Operator } from './operators/entities/operator.entity';
 import { SpecialistsModule } from './specialists/specialists.module';
 import { Specialist } from './specialists/entities/specialist.entity';

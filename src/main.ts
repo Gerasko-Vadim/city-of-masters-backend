@@ -19,13 +19,18 @@ async function bootstrap() {
 
   const app = await NestFactory.create(AppModule);
 
-  // ✅ Verify database connection
+  // ✅ Verify database connection and apply manual patches if needed
   try {
     const dataSource = app.get(DataSource);
     await dataSource.query('SELECT 1');
     console.log('✅ Database connection verified successfully');
+    
+    // Manual patch for missing columns if synchronize didn't pick them up
+    console.log('Checking for missing columns...');
+    await dataSource.query('ALTER TABLE "order" ADD COLUMN IF NOT EXISTS "startedAt" TIMESTAMP WITH TIME ZONE');
+    console.log('Column check/patch completed');
   } catch (error) {
-    console.error('❌ Database verification failed:', error.message);
+    console.error('❌ Database verification/patch failed:', error.message);
     throw error; // Re-throw to trigger bootstrap catch
   }
 
