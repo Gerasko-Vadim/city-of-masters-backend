@@ -38,9 +38,11 @@ export class OrderService {
 
     if (order.status === OrderStatus.PAID) {
       await this.telegramQueue.add('new-order', {
-        orderId: order.id,
+        id: order.id,
         lat: order.lat,
         lng: order.lng,
+        address: order.address,
+        totalAmount: order.totalAmount,
       });
     }
 
@@ -74,9 +76,11 @@ export class OrderService {
     // Если статус изменился на PAID, запускаем поиск исполнителей
     if (oldStatus !== OrderStatus.PAID && savedOrder.status === OrderStatus.PAID) {
       await this.telegramQueue.add('new-order', {
-        orderId: savedOrder.id,
+        id: savedOrder.id,
         lat: savedOrder.lat,
         lng: savedOrder.lng,
+        address: savedOrder.address,
+        totalAmount: savedOrder.totalAmount,
       });
     }
 
