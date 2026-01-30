@@ -19,10 +19,10 @@ export class TelegramService {
             [
               {
                 text: '✅ Принять заказ',
-                callback_data: `accept:${order.id}`,
+                callback_data: `accept_${order.id}`,
               },
             ],
-            [{ text: '❌ Пропустить', callback_data: `skip:${order.id}` }],
+            [{ text: '❌ Пропустить', callback_data: `skip_${order.id}` }],
           ],
         },
       },
