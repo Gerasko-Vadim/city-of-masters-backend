@@ -5,7 +5,7 @@ import { ChatMessage, MessageSender } from '../order/entities/chat-message.entit
 import { EventsGateway } from '../events/events.gateway';
 import { TelegramService } from '../telegram/telegram.service';
 import { Order } from '../order/entities/order.entity';
-import { Specialist } from 'src/specialists/entities/specialist.entity';
+import { Specialist } from '../specialists/entities/specialist.entity';
 
 @Injectable()
 export class ChatService {
@@ -30,8 +30,9 @@ export class ChatService {
     if (specialistId) {
       const specialist = await this.specialistRepo.findOne({ where: { id: specialistId } });
       const tid = specialist?.telegramId || specialistId;
+      // Show all messages for this specialist on their profile page
       return this.chatRepo.find({
-        where: { specialistId: tid, orderId: IsNull() },
+        where: { specialistId: tid },
         order: { createdAt: 'ASC' },
       });
     }
@@ -45,7 +46,8 @@ export class ChatService {
     operatorId?: number,
   ) {
     let telegramId: number | undefined;
-    let resolvedSpecialistId: number | undefined;
+    let resolvedTelegramId: number | undefined;
+    let resolvedInternalSpecialistId: number | undefined = specialistId;
 
     if (orderId) {
       const order = await this.orderRepo.findOne({
@@ -54,7 +56,8 @@ export class ChatService {
       });
       if (order && order.assignedSpecialist) {
         telegramId = order.assignedSpecialist.telegramId;
-        resolvedSpecialistId = order.assignedSpecialistId;
+        resolvedTelegramId = order.assignedSpecialist.telegramId;
+        resolvedInternalSpecialistId = order.assignedSpecialist.id;
       }
     } else if (specialistId) {
       const specialist = await this.specialistRepo.findOne({
@@ -62,23 +65,25 @@ export class ChatService {
       });
       if (specialist) {
         telegramId = specialist.telegramId;
-        resolvedSpecialistId = specialist.telegramId;
+        resolvedTelegramId = specialist.telegramId;
       }
     }
 
     const message = await this.chatRepo.save({
       orderId,
-      specialistId: resolvedSpecialistId,
+      specialistId: resolvedTelegramId,
       text,
       senderType: MessageSender.OPERATOR,
       senderId: operatorId,
     });
 
     if (orderId) {
+      console.log(`Emitting to chat_${orderId}`);
       this.eventsGateway.server.emit(`chat_${orderId}`, message);
     }
-    if (resolvedSpecialistId) {
-      this.eventsGateway.server.emit(`chat_specialist_${resolvedSpecialistId}`, message);
+    if (resolvedInternalSpecialistId) {
+      console.log(`Emitting to chat_specialist_${resolvedInternalSpecialistId}`);
+      this.eventsGateway.server.emit(`chat_specialist_${resolvedInternalSpecialistId}`, message);
     }
 
     if (telegramId) {
@@ -100,7 +105,7 @@ export class ChatService {
 
     const order = await this.orderRepo.findOne({
       where: {
-        assignedSpecialistId: specialist.id,
+        assignedSpecialistId: specialist.telegramId,
         status: 'IN_PROGRESS' as any,
       },
     });
