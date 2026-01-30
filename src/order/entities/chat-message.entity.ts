@@ -30,7 +30,7 @@ export class ChatMessage {
   specialistId: number;
 
   @ManyToOne(() => Specialist, { nullable: true })
-  @JoinColumn({ name: 'specialistId' })
+  @JoinColumn({ name: 'specialistId', referencedColumnName: 'telegramId' })
   specialist: Specialist;
 
   @Column({ type: 'text' })

@@ -156,6 +156,7 @@ export class OrderService {
 
       order.status = OrderStatus.IN_PROGRESS;
       order.assignedSpecialistId = telegramId;
+      order.startedAt = new Date();
       const savedOrder = await this.orderRepository.save(order);
       this.eventsGateway.sendOrderUpdate(savedOrder);
       return savedOrder;

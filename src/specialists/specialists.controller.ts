@@ -51,14 +51,11 @@ export class SpecialistsController {
   async getOne(@Param('id', ParseIntPipe) id: number) {
     const specialist = await this.specialistsService.findOneById(id);
     if (!specialist) {
-        // We need NotFoundException here, but imports might be missing.
-        // I will throw generic Error if NotFoundException is not imported or use @nestjs/common if imported.
-        // It is typically imported.
-        // Let's check imports in next step or assume yes.
-        throw new Error('Specialist not found'); 
+      throw new NotFoundException('Specialist not found');
     }
     const orders = await this.orderService.findBySpecialist(specialist.telegramId);
-    return { ...specialist, orders };
+    const activeOrder = await this.orderService.findActiveOrder(specialist.telegramId);
+    return { ...specialist, orders, activeOrder };
   }
 }
 

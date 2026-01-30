@@ -61,8 +61,11 @@ export class Order {
   @Column({ type: 'int', nullable: true })
   assignedSpecialistId?: number;
 
+  @Column({ type: 'timestamp', nullable: true })
+  startedAt?: Date;
+
   @ManyToOne(() => Specialist, { nullable: true })
-  @JoinColumn({ name: 'assignedSpecialistId' })
+  @JoinColumn({ name: 'assignedSpecialistId', referencedColumnName: 'telegramId' })
   assignedSpecialist?: Specialist;
 
   @Column('jsonb', { default: [] })

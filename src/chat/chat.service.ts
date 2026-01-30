@@ -28,8 +28,10 @@ export class ChatService {
       });
     }
     if (specialistId) {
+      const specialist = await this.specialistRepo.findOne({ where: { id: specialistId } });
+      const tid = specialist?.telegramId || specialistId;
       return this.chatRepo.find({
-        where: { specialistId, orderId: IsNull() },
+        where: { specialistId: tid, orderId: IsNull() },
         order: { createdAt: 'ASC' },
       });
     }
@@ -43,7 +45,7 @@ export class ChatService {
     operatorId?: number,
   ) {
     let telegramId: number | undefined;
-    let resolvedSpecialistId: number | undefined = specialistId;
+    let resolvedSpecialistId: number | undefined;
 
     if (orderId) {
       const order = await this.orderRepo.findOne({
@@ -60,6 +62,7 @@ export class ChatService {
       });
       if (specialist) {
         telegramId = specialist.telegramId;
+        resolvedSpecialistId = specialist.telegramId;
       }
     }
 
@@ -104,10 +107,10 @@ export class ChatService {
 
     const message = await this.chatRepo.save({
       orderId: order?.id,
-      specialistId: specialist.id,
+      specialistId: specialist.telegramId,
       text,
       senderType: MessageSender.SPECIALIST,
-      senderId: specialist.id,
+      senderId: specialist.telegramId,
     });
 
     if (order) {
