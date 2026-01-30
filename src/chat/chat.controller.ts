@@ -13,10 +13,24 @@ export class ChatController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Get('specialist/:specialistId')
+  async getSpecialistHistory(@Param('specialistId') specialistId: string) {
+    return this.chatService.getHistory(undefined, Number(specialistId));
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Post('send')
-  async sendFromOperator(@Body() body: { orderId: number; text: string }, @Request() req: any) {
+  async sendFromOperator(
+    @Body() body: { orderId?: number; specialistId?: number; text: string },
+    @Request() req: any,
+  ) {
     // req.user has the operator info
-    return this.chatService.sendFromOperator(body.orderId, body.text, req.user.id);
+    return this.chatService.sendFromOperator(
+      body.text,
+      body.orderId,
+      body.specialistId,
+      req.user.id,
+    );
   }
 
   @Post('specialist-send')

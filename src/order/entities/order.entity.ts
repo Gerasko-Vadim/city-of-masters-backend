@@ -5,7 +5,10 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   Index,
+  ManyToOne,
+  JoinColumn,
 } from 'typeorm';
+import { Specialist } from '../../specialists/entities/specialist.entity';
 
 export enum OrderStatus {
   NEW = 'NEW',
@@ -57,6 +60,10 @@ export class Order {
 
   @Column({ type: 'int', nullable: true })
   assignedSpecialistId?: number;
+
+  @ManyToOne(() => Specialist, { nullable: true })
+  @JoinColumn({ name: 'assignedSpecialistId' })
+  assignedSpecialist?: Specialist;
 
   @Column('jsonb', { default: [] })
   notifiedSpecialists: { telegramId: number; messageId: number }[];

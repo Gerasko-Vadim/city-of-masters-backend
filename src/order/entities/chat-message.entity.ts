@@ -4,8 +4,10 @@ import {
   PrimaryGeneratedColumn,
   CreateDateColumn,
   ManyToOne,
+  JoinColumn,
 } from 'typeorm';
 import { Order } from './order.entity';
+import { Specialist } from '../../specialists/entities/specialist.entity';
 
 export enum MessageSender {
   SPECIALIST = 'SPECIALIST',
@@ -17,11 +19,19 @@ export class ChatMessage {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column()
+  @Column({ nullable: true })
   orderId: number;
 
-  @ManyToOne(() => Order)
+  @ManyToOne(() => Order, { nullable: true })
+  @JoinColumn({ name: 'orderId' })
   order: Order;
+
+  @Column({ nullable: true })
+  specialistId: number;
+
+  @ManyToOne(() => Specialist, { nullable: true })
+  @JoinColumn({ name: 'specialistId' })
+  specialist: Specialist;
 
   @Column({ type: 'text' })
   text: string;

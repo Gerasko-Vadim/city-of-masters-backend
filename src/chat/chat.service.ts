@@ -1,10 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, IsNull } from 'typeorm';
 import { ChatMessage, MessageSender } from '../order/entities/chat-message.entity';
 import { EventsGateway } from '../events/events.gateway';
 import { TelegramService } from '../telegram/telegram.service';
 import { Order } from '../order/entities/order.entity';
+import { Specialist } from 'src/specialists/entities/specialist.entity';
 
 @Injectable()
 export class ChatService {
@@ -13,78 +14,107 @@ export class ChatService {
     private chatRepo: Repository<ChatMessage>,
     @InjectRepository(Order)
     private orderRepo: Repository<Order>,
+    @InjectRepository(Specialist)
+    private specialistRepo: Repository<Specialist>,
     private eventsGateway: EventsGateway,
     private telegramService: TelegramService,
   ) {}
 
-  async getHistory(orderId: number) {
-    return this.chatRepo.find({
-      where: { orderId },
-      order: { createdAt: 'ASC' },
-    });
+  async getHistory(orderId?: number, specialistId?: number) {
+    if (orderId) {
+      return this.chatRepo.find({
+        where: { orderId },
+        order: { createdAt: 'ASC' },
+      });
+    }
+    if (specialistId) {
+      return this.chatRepo.find({
+        where: { specialistId, orderId: IsNull() },
+        order: { createdAt: 'ASC' },
+      });
+    }
+    return [];
   }
 
-  async sendFromOperator(orderId: number, text: string, operatorId?: number) {
-    const order = await this.orderRepo.findOne({
-      where: { id: orderId }
-    });
+  async sendFromOperator(
+    text: string,
+    orderId?: number,
+    specialistId?: number,
+    operatorId?: number,
+  ) {
+    let telegramId: number | undefined;
+    let resolvedSpecialistId: number | undefined = specialistId;
 
-    if (!order || !order.assignedSpecialistId) return null;
+    if (orderId) {
+      const order = await this.orderRepo.findOne({
+        where: { id: orderId },
+        relations: ['assignedSpecialist'],
+      });
+      if (order && order.assignedSpecialist) {
+        telegramId = order.assignedSpecialist.telegramId;
+        resolvedSpecialistId = order.assignedSpecialistId;
+      }
+    } else if (specialistId) {
+      const specialist = await this.specialistRepo.findOne({
+        where: { id: specialistId },
+      });
+      if (specialist) {
+        telegramId = specialist.telegramId;
+      }
+    }
 
     const message = await this.chatRepo.save({
       orderId,
+      specialistId: resolvedSpecialistId,
       text,
       senderType: MessageSender.OPERATOR,
       senderId: operatorId,
     });
 
-    // Notify Specialist via Telegram
-    // We need to find the specialist's telegramId. 
-    // Since Order has assignedSpecialistId, we should ideally have the specialist object or just the ID.
-    // In our case, the bot knows the specialist. Let's assume we can get telegramId from a service.
+    if (orderId) {
+      this.eventsGateway.server.emit(`chat_${orderId}`, message);
+    }
+    if (resolvedSpecialistId) {
+      this.eventsGateway.server.emit(`chat_specialist_${resolvedSpecialistId}`, message);
+    }
 
-    this.eventsGateway.server.emit(`chat_${orderId}`, message);
-
-    // Get specialist's telegramId via another repo or join
-    const specialistRes = await this.orderRepo.query(
-        'SELECT "telegramId" FROM specialists WHERE id = $1',
-        [order.assignedSpecialistId]
-    );
-
-    if (specialistRes && specialistRes[0]) {
-        await this.telegramService.sendMessage(
-            specialistRes[0].telegramId,
-            `💬 <b>Сообщение от оператора:</b>\n\n${text}`
-        );
+    if (telegramId) {
+      await this.telegramService.sendMessage(
+        telegramId,
+        `💬 <b>Сообщение от оператора:</b>\n\n${text}`,
+      );
     }
 
     return message;
   }
 
   async sendFromSpecialist(telegramId: number, text: string) {
-    // Find active order for this specialist
-    const specialistRes = await this.orderRepo.query(
-        'SELECT id FROM specialists WHERE "telegramId" = $1',
-        [telegramId]
-    );
+    const specialist = await this.specialistRepo.findOne({
+      where: { telegramId },
+    });
 
-    if (!specialistRes || !specialistRes[0]) return null;
-    const specialistId = specialistRes[0].id;
+    if (!specialist) return null;
 
     const order = await this.orderRepo.findOne({
-      where: { assignedSpecialistId: specialistId, status: 'IN_PROGRESS' as any }
+      where: {
+        assignedSpecialistId: specialist.id,
+        status: 'IN_PROGRESS' as any,
+      },
     });
-
-    if (!order) return null;
 
     const message = await this.chatRepo.save({
-      orderId: order.id,
+      orderId: order?.id,
+      specialistId: specialist.id,
       text,
       senderType: MessageSender.SPECIALIST,
-      senderId: specialistId,
+      senderId: specialist.id,
     });
 
-    this.eventsGateway.server.emit(`chat_${order.id}`, message);
+    if (order) {
+      this.eventsGateway.server.emit(`chat_${order.id}`, message);
+    }
+    this.eventsGateway.server.emit(`chat_specialist_${specialist.id}`, message);
+
     return message;
   }
 }
