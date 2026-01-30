@@ -22,21 +22,32 @@ export class ChatService {
 
   async getHistory(orderId?: number, specialistId?: number) {
     if (orderId) {
-      return this.chatRepo.find({
+      const history = await this.chatRepo.find({
         where: { orderId },
         order: { createdAt: 'ASC' },
       });
+      await this.markAsRead(orderId);
+      return history;
     }
     if (specialistId) {
       const specialist = await this.specialistRepo.findOne({ where: { id: specialistId } });
       const tid = specialist?.telegramId || specialistId;
       // Show all messages for this specialist on their profile page
-      return this.chatRepo.find({
+      const history = await this.chatRepo.find({
         where: { specialistId: tid },
         order: { createdAt: 'ASC' },
       });
+      await this.markAsRead(undefined, specialistId);
+      return history;
     }
     return [];
+  }
+
+  // Helper method for older code that doesn't handle await in getHistory
+  async getHistoryWithRead(orderId?: number, specialistId?: number) {
+    const history = await this.getHistory(orderId, specialistId);
+    await this.markAsRead(orderId, specialistId);
+    return history;
   }
 
   async sendFromOperator(
@@ -122,7 +133,30 @@ export class ChatService {
       this.eventsGateway.server.emit(`chat_${order.id}`, message);
     }
     this.eventsGateway.server.emit(`chat_specialist_${specialist.id}`, message);
+    
+    // Global notification for admin panel
+    this.eventsGateway.server.emit('admin_notification', {
+      type: 'CHAT_MESSAGE',
+      specialistId: specialist.id,
+      specialistName: specialist.name || specialist.username,
+      text,
+      orderId: order?.id,
+    });
 
     return message;
+  }
+
+  async markAsRead(orderId?: number, specialistId?: number) {
+    if (orderId) {
+      await this.chatRepo.update({ orderId, senderType: MessageSender.SPECIALIST }, { isRead: true });
+    } else if (specialistId) {
+      const specialist = await this.specialistRepo.findOne({ where: { id: specialistId } });
+      if (specialist) {
+        await this.chatRepo.update(
+          { specialistId: specialist.telegramId, senderType: MessageSender.SPECIALIST, orderId: IsNull() },
+          { isRead: true }
+        );
+      }
+    }
   }
 }

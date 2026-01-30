@@ -37,4 +37,10 @@ export class ChatController {
   async sendFromSpecialist(@Body() body: { telegramId: number; text: string }) {
     return this.chatService.sendFromSpecialist(body.telegramId, body.text);
   }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('mark-as-read')
+  async markAsRead(@Body() body: { orderId?: number; specialistId?: number }) {
+    return this.chatService.markAsRead(body.orderId, body.specialistId);
+  }
 }

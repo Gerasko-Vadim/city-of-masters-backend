@@ -19,7 +19,24 @@ export class SpecialistsService {
   }
 
   async findAll() {
-    return this.repo.find({ order: { createdAt: 'DESC' } });
+    const raw = await this.repo
+      .createQueryBuilder('s')
+      .leftJoin(
+        'chat_message',
+        'cm',
+        'cm.specialistId = s.telegramId AND cm.isRead = false AND cm.senderType = :sender',
+        { sender: 'SPECIALIST' }
+      )
+      .select('s')
+      .addSelect('COUNT(cm.id)', 'unreadCount')
+      .groupBy('s.id')
+      .orderBy('s.createdAt', 'DESC')
+      .getRawAndEntities();
+
+    return raw.entities.map((specialist, index) => ({
+      ...specialist,
+      unreadCount: parseInt(raw.raw[index].unreadCount || '0', 10),
+    }));
   }
 
   async findOneById(id: number) {

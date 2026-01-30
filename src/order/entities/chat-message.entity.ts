@@ -42,6 +42,9 @@ export class ChatMessage {
   @Column({ nullable: true })
   senderId: number; // For operators, this will be the operator ID
 
+  @Column({ default: false })
+  isRead: boolean;
+
   @CreateDateColumn()
   createdAt: Date;
 }

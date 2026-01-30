@@ -29,6 +29,7 @@ async function bootstrap() {
     console.log('Checking for missing columns...');
     await dataSource.query('ALTER TABLE "order" ADD COLUMN IF NOT EXISTS "startedAt" TIMESTAMP WITH TIME ZONE');
     await dataSource.query('ALTER TABLE "order" ADD COLUMN IF NOT EXISTS "completedAt" TIMESTAMP WITH TIME ZONE');
+    await dataSource.query('ALTER TABLE "chat_message" ADD COLUMN IF NOT EXISTS "isRead" BOOLEAN DEFAULT FALSE');
     console.log('Column check/patch completed');
   } catch (error) {
     console.error('❌ Database verification/patch failed:', error.message);
