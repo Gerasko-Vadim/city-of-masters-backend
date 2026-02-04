@@ -28,8 +28,11 @@ export class SpecialistsController {
   }
 
   @Get('orders/nearby')
-  getNearbyOrders(@Query('telegramId') telegramId: number) {
-    return this.orderService.findNearbyOrders(telegramId);
+  getNearbyOrders(
+    @Query('telegramId') telegramId: number,
+    @Query('radius') radius?: number,
+  ) {
+    return this.orderService.findNearbyOrders(telegramId, radius);
   }
 
   @Get('active-order')

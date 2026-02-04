@@ -96,15 +96,23 @@ export class OrderService {
     return this.orderRepository.remove(order);
   }
 
-  async findNearbyOrders(telegramId: number) {
+  async findNearbyOrders(telegramId: number, radiusKm = 5) {
     const specialist =
       await this.specialistsService.findByTelegramId(telegramId);
     if (!specialist || !specialist.lat || !specialist.lng) return [];
 
-    const radiusKm = 5;
-
     return this.orderRepository
       .createQueryBuilder('order')
+      .addSelect(
+        `
+        6371 * acos(
+          cos(radians(:lat)) * cos(radians(order.lat)) *
+          cos(radians(order.lng) - radians(:lng)) +
+          sin(radians(:lat)) * sin(radians(order.lat))
+        )
+      `,
+        'distance',
+      )
       .where(
         `
       6371 * acos(
@@ -116,6 +124,7 @@ export class OrderService {
         { lat: specialist.lat, lng: specialist.lng, radius: radiusKm },
       )
       .andWhere('order.status = :status', { status: OrderStatus.PAID })
+      .orderBy('distance', 'ASC')
       .getMany();
   }
 
