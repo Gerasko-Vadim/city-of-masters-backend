@@ -32,6 +32,9 @@ export class Specialist {
   @Column({ type: 'float', nullable: true })
   lng: number | null;
 
+  @Column({ type: 'timestamp', nullable: true })
+  lastShiftStartedAt: Date | null;
+
   @CreateDateColumn()
   createdAt: Date;
 }

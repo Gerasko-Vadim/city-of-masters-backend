@@ -67,11 +67,13 @@ export class OrderService {
 
   // Обновление заказа
   async update(id: number, updateOrderDto: UpdateOrderDto): Promise<Order> {
+    console.log(`Updating order ${id} with:`, updateOrderDto);
     const order = await this.findOne(id);
     const oldStatus = order.status;
 
     Object.assign(order, updateOrderDto);
     const savedOrder = await this.orderRepository.save(order);
+    console.log(`Order ${id} saved successfully`);
 
     // Если статус изменился на PAID, запускаем поиск исполнителей
     if (oldStatus !== OrderStatus.PAID && savedOrder.status === OrderStatus.PAID) {

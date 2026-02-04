@@ -70,6 +70,9 @@ export class SpecialistsService {
 
     if (!specialist) throw new NotFoundException();
 
+    if (!specialist.isOnShift) {
+      specialist.lastShiftStartedAt = new Date();
+    }
     specialist.isOnShift = true;
     specialist.lat = dto.lat;
     specialist.lng = dto.lng;
@@ -111,8 +114,8 @@ export class SpecialistsService {
     }
 
     specialist.isOnShift = false;
-    specialist.lat = null;
-    specialist.lng = null;
+    // specialist.lat = null;
+    // specialist.lng = null;
 
     const saved = await this.repo.save(specialist);
     this.eventsGateway.sendSpecialistUpdate(saved);
