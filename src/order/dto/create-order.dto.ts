@@ -33,8 +33,4 @@ export class CreateOrderDto {
 
   @IsNumber()
   lng: number;
-
-  @IsEnum(OrderCategory)
-  @IsOptional()
-  category?: OrderCategory;
 }
