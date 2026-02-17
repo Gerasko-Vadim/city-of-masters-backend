@@ -14,14 +14,6 @@ export async function seedAdmin(dataSource: DataSource) {
     return;
   }
 
-  console.log('--- ADMIN SEED: FIRST RUN DETECTED ---');
-  console.log('--- CLEARING DATABASE ---');
-  await dataSource.query('TRUNCATE "chat_message" CASCADE');
-  await dataSource.query('TRUNCATE "order" CASCADE');
-  await dataSource.query('TRUNCATE "specialist" CASCADE');
-  await dataSource.query('TRUNCATE "operator" CASCADE');
-  console.log('--- DATABASE CLEARED ---');
-
   const passwordHash = await bcrypt.hash(
     'cityofmaster987',
     10,
