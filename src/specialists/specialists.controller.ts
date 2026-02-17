@@ -8,6 +8,13 @@ export class SpecialistsController {
     private readonly specialistsService: SpecialistsService,
     private readonly orderService: OrderService,
   ) {}
+  @Get('status')
+  async getStatus(@Query('telegramId', ParseIntPipe) telegramId: number) {
+    const specialist = await this.specialistsService.findByTelegramId(telegramId);
+    if (!specialist) return null;
+    return { isBanned: specialist.isBanned, isOnShift: specialist.isOnShift };
+  }
+
   @Post('register')
   async register(@Body() dto: { telegramId: number; name?: string; username?: string }) {
     return this.specialistsService.register(dto);
