@@ -34,7 +34,7 @@ export class OrderService {
   ) {}
 
   async create(dto: CreateOrderDto) {
-    const order = await this.orderRepository.save(dto);
+    const order = await this.orderRepository.save(this.orderRepository.create(dto));
 
     if (order.status === OrderStatus.PAID) {
       await this.telegramQueue.add('new-order', {

@@ -26,7 +26,7 @@ export class ChatMessage {
   @JoinColumn({ name: 'orderId' })
   order: Order;
 
-  @Column({ nullable: true })
+  @Column({ type: 'bigint', nullable: true })
   specialistId: number;
 
   @ManyToOne(() => Specialist, { nullable: true })

@@ -20,6 +20,10 @@ export class CreateOrderDto {
   @Min(0)
   totalAmount: number;
 
+  @IsNumber()
+  @IsOptional()
+  commission?: number;
+
   @IsDateString()
   @IsOptional()
   scheduledAt?: string;
@@ -33,4 +37,8 @@ export class CreateOrderDto {
 
   @IsNumber()
   lng: number;
+
+  @IsNumber()
+  @IsOptional()
+  clientId?: number;
 }

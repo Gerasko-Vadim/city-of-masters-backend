@@ -14,7 +14,7 @@ export class Specialist {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ unique: true })
+  @Column({ unique: true, type: 'bigint' })
   telegramId: number;
 
   @Column({ nullable: true })

@@ -37,6 +37,9 @@ export class Order {
   @Column({ type: 'decimal' })
   totalAmount: number;
 
+  @Column({ type: 'decimal', default: 0 })
+  commission: number;
+
   @Column({ type: 'enum', enum: OrderStatus, default: OrderStatus.NEW })
   status: OrderStatus;
 
@@ -58,7 +61,7 @@ export class Order {
   @Column({ type: 'float' })
   lng: number;
 
-  @Column({ type: 'int', nullable: true })
+  @Column({ type: 'bigint', nullable: true })
   assignedSpecialistId?: number;
 
   @Column({ type: 'timestamp', nullable: true })
