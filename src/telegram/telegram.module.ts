@@ -10,7 +10,7 @@ import { OrderModule } from 'src/order/order.module';
     BullModule.registerQueue({
       name: 'orders',
     }),
-    SpecialistsModule,
+    forwardRef(() => SpecialistsModule),
     forwardRef(() => OrderModule),
   ],
   providers: [TelegramService, TelegramProcessor],
