@@ -47,4 +47,15 @@ export class TelegramService {
       }
     );
   }
+
+  async sendBanNotification(telegramId: string | number) {
+    await bot.telegram.sendMessage(
+      telegramId as any,
+      `❌ <b>Ваш аккаунт заблокирован.</b>\n\nВы больше не можете пользоваться ботом. Если вы считаете, что это ошибка, свяжитесь с поддержкой.`,
+      {
+        parse_mode: 'HTML',
+        ...Markup.removeKeyboard(),
+      }
+    );
+  }
 }

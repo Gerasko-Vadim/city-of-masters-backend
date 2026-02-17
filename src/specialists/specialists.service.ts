@@ -148,7 +148,9 @@ export class SpecialistsService {
     const saved = await this.repo.save(specialist);
     this.eventsGateway.sendSpecialistUpdate(saved);
 
-    if (!isBanned && saved.telegramId) {
+    if (isBanned && saved.telegramId) {
+      await this.telegramService.sendBanNotification(saved.telegramId);
+    } else if (!isBanned && saved.telegramId) {
       await this.telegramService.sendUnbanNotification(saved.telegramId);
     }
 
