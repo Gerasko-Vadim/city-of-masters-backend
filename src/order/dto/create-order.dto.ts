@@ -37,8 +37,4 @@ export class CreateOrderDto {
 
   @IsNumber()
   lng: number;
-
-  @IsNumber()
-  @IsOptional()
-  clientId?: number;
 }
