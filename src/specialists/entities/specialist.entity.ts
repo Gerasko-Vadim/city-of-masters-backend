@@ -35,6 +35,9 @@ export class Specialist {
   @Column({ type: 'timestamp', nullable: true })
   lastShiftStartedAt: Date | null;
 
+  @Column({ default: false })
+  isBanned: boolean;
+
   @CreateDateColumn()
   createdAt: Date;
 }

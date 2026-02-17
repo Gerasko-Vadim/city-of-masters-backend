@@ -121,5 +121,16 @@ export class SpecialistsService {
     this.eventsGateway.sendSpecialistUpdate(saved);
     return saved;
   }
+
+  async setBan(id: number, isBanned: boolean) {
+    const specialist = await this.repo.findOneBy({ id });
+    if (!specialist) {
+      throw new NotFoundException('Specialist not found');
+    }
+    specialist.isBanned = isBanned;
+    const saved = await this.repo.save(specialist);
+    this.eventsGateway.sendSpecialistUpdate(saved);
+    return saved;
+  }
 }
 

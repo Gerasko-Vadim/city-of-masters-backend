@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Query, Param, ParseIntPipe, NotFoundException } from '@nestjs/common';
+import { Body, Controller, Get, Post, Patch, Query, Param, ParseIntPipe, NotFoundException } from '@nestjs/common';
 import { SpecialistsService } from './specialists.service';
 import { OrderService } from 'src/order/order.service';
 
@@ -59,6 +59,11 @@ export class SpecialistsController {
     const orders = await this.orderService.findBySpecialist(specialist.telegramId);
     const activeOrder = await this.orderService.findActiveOrder(specialist.telegramId);
     return { ...specialist, orders, activeOrder };
+  }
+
+  @Patch(':id/ban')
+  async ban(@Param('id', ParseIntPipe) id: number, @Body('isBanned') isBanned: boolean) {
+    return this.specialistsService.setBan(id, isBanned);
   }
 }
 

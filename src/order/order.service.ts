@@ -203,8 +203,8 @@ export class OrderService {
 
   async completeByBot(orderId: number, telegramId: number): Promise<Order> {
     const order = await this.findOne(orderId);
-
-    if (order.assignedSpecialistId !== telegramId) {
+    
+    if (String(order.assignedSpecialistId) !== String(telegramId)) {
       throw new ConflictException('You are not assigned to this order');
     }
 
