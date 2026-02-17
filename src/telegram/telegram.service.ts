@@ -43,7 +43,9 @@ export class TelegramService {
       `🎉 <b>Ваш аккаунт разблокирован!</b>\n\nВы снова можете принимать заказы. Нажмите кнопку ниже, чтобы выйти на смену.`,
       {
         parse_mode: 'HTML',
-        ...Markup.keyboard([['🟢 Я на смене']]).resize().oneTime(),
+        ...Markup.inlineKeyboard([
+          Markup.button.callback('🟢 Я на смене', 'go_on_shift'),
+        ]),
       }
     );
   }
