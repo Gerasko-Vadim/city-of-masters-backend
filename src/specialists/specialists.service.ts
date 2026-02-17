@@ -128,6 +128,9 @@ export class SpecialistsService {
       throw new NotFoundException('Specialist not found');
     }
     specialist.isBanned = isBanned;
+    if (isBanned) {
+      specialist.isOnShift = false;
+    }
     const saved = await this.repo.save(specialist);
     this.eventsGateway.sendSpecialistUpdate(saved);
     return saved;
