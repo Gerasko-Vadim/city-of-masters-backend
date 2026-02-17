@@ -1,10 +1,11 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, Inject, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Specialist } from './entities/specialist.entity';
 import { UpdateLocationDto } from './dto/update-location.dto';
 import { RegisterTelegramDto } from './dto/register-telegram.dto';
 import { EventsGateway } from 'src/events/events.gateway';
+import { TelegramService } from 'src/telegram/telegram.service';
 
 @Injectable()
 export class SpecialistsService {
@@ -12,6 +13,8 @@ export class SpecialistsService {
     @InjectRepository(Specialist)
     private readonly repo: Repository<Specialist>,
     private readonly eventsGateway: EventsGateway,
+    @Inject(forwardRef(() => TelegramService))
+    private readonly telegramService: TelegramService,
   ) {}
 
   async findByTelegramId(telegramId: string | number) {
@@ -144,6 +147,11 @@ export class SpecialistsService {
     }
     const saved = await this.repo.save(specialist);
     this.eventsGateway.sendSpecialistUpdate(saved);
+
+    if (!isBanned && saved.telegramId) {
+      await this.telegramService.sendUnbanNotification(saved.telegramId);
+    }
+
     return saved;
   }
 }

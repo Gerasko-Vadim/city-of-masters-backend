@@ -1,8 +1,10 @@
+import { Injectable } from '@nestjs/common';
 import { Order } from 'src/order/entities/order.entity';
-import { Telegraf } from 'telegraf';
+import { Telegraf, Markup } from 'telegraf';
 
 export const bot = new Telegraf(process.env.BOT_TOKEN!);
 
+@Injectable()
 export class TelegramService {
   async sendOrderToSpecialist(telegramId: string | number, order: Order) {
     const msg = await bot.telegram.sendMessage(
@@ -33,5 +35,16 @@ export class TelegramService {
 
   async sendMessage(telegramId: string | number, text: string) {
     await bot.telegram.sendMessage(telegramId as any, text, { parse_mode: 'HTML' });
+  }
+
+  async sendUnbanNotification(telegramId: string | number) {
+    await bot.telegram.sendMessage(
+      telegramId as any,
+      `🎉 <b>Ваш аккаунт разблокирован!</b>\n\nВы снова можете принимать заказы. Нажмите кнопку ниже, чтобы выйти на смену.`,
+      {
+        parse_mode: 'HTML',
+        ...Markup.keyboard([['🟢 Я на смене']]).resize().oneTime(),
+      }
+    );
   }
 }
