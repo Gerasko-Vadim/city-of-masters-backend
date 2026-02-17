@@ -1,5 +1,5 @@
 export class RegisterTelegramDto {
-  telegramId: number;
+  telegramId: number | string;
   name?: string;
   username?: string;
 }

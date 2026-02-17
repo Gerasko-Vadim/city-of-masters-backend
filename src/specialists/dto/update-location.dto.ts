@@ -1,5 +1,5 @@
 export class UpdateLocationDto {
-  telegramId: number;
+  telegramId: number | string;
   lat: number;
   lng: number;
 }

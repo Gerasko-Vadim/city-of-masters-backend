@@ -34,7 +34,7 @@ export class ChatService {
       const tid = specialist?.telegramId || specialistId;
       // Show all messages for this specialist on their profile page
       const history = await this.chatRepo.find({
-        where: { specialistId: tid },
+        where: { specialistId: tid as any },
         order: { createdAt: 'ASC' },
       });
       await this.markAsRead(undefined, specialistId);
@@ -56,8 +56,8 @@ export class ChatService {
     specialistId?: number,
     operatorId?: number,
   ) {
-    let telegramId: number | undefined;
-    let resolvedTelegramId: number | undefined;
+    let telegramId: string | number | undefined;
+    let resolvedTelegramId: string | number | undefined;
     let resolvedInternalSpecialistId: number | undefined = specialistId;
 
     if (orderId) {
@@ -82,7 +82,7 @@ export class ChatService {
 
     const message = await this.chatRepo.save({
       orderId,
-      specialistId: resolvedTelegramId,
+      specialistId: resolvedTelegramId as any,
       text,
       senderType: MessageSender.OPERATOR,
       senderId: operatorId,
@@ -99,7 +99,7 @@ export class ChatService {
 
     if (telegramId) {
       await this.telegramService.sendMessage(
-        telegramId,
+        telegramId as any,
         `💬 <b>Сообщение от оператора:</b>\n\n${text}`,
       );
     }
@@ -107,16 +107,16 @@ export class ChatService {
     return message;
   }
 
-  async sendFromSpecialist(telegramId: number, text: string) {
+  async sendFromSpecialist(telegramId: string | number, text: string) {
     const specialist = await this.specialistRepo.findOne({
-      where: { telegramId },
+      where: { telegramId: telegramId as any },
     });
 
     if (!specialist) return null;
 
     const order = await this.orderRepo.findOne({
       where: {
-        assignedSpecialistId: specialist.telegramId,
+        assignedSpecialistId: specialist.telegramId as any,
         status: 'IN_PROGRESS' as any,
       },
     });
@@ -126,9 +126,9 @@ export class ChatService {
       specialistId: specialist.telegramId,
       text,
       senderType: MessageSender.SPECIALIST,
-      senderId: specialist.telegramId,
+      senderId: specialist.telegramId as any,
     });
-
+// ... (rest of the file is unchanged, just fixing the types in this block)
     if (order) {
       this.eventsGateway.server.emit(`chat_${order.id}`, message);
     }
@@ -153,7 +153,7 @@ export class ChatService {
       const specialist = await this.specialistRepo.findOne({ where: { id: specialistId } });
       if (specialist) {
         await this.chatRepo.update(
-          { specialistId: specialist.telegramId, senderType: MessageSender.SPECIALIST, orderId: IsNull() },
+          { specialistId: specialist.telegramId as any, senderType: MessageSender.SPECIALIST, orderId: IsNull() },
           { isRead: true }
         );
       }

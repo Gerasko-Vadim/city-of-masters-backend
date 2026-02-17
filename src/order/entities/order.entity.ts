@@ -62,7 +62,7 @@ export class Order {
   lng: number;
 
   @Column({ type: 'bigint', nullable: true })
-  assignedSpecialistId?: number;
+  assignedSpecialistId?: string;
 
   @Column({ type: 'timestamp', nullable: true })
   startedAt?: Date;
@@ -75,5 +75,5 @@ export class Order {
   assignedSpecialist?: Specialist;
 
   @Column('jsonb', { default: [] })
-  notifiedSpecialists: { telegramId: number; messageId: number }[];
+  notifiedSpecialists: { telegramId: string; messageId: number }[];
 }

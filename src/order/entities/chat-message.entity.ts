@@ -27,7 +27,7 @@ export class ChatMessage {
   order: Order;
 
   @Column({ type: 'bigint', nullable: true })
-  specialistId: number;
+  specialistId: string;
 
   @ManyToOne(() => Specialist, { nullable: true })
   @JoinColumn({ name: 'specialistId', referencedColumnName: 'telegramId' })

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Specialist } from './entities/specialist.entity';
@@ -14,8 +14,8 @@ export class SpecialistsService {
     private readonly eventsGateway: EventsGateway,
   ) {}
 
-  async findByTelegramId(telegramId: number) {
-    return this.repo.findOne({ where: { telegramId } });
+  async findByTelegramId(telegramId: string | number) {
+    return this.repo.findOne({ where: { telegramId: telegramId as any } });
   }
 
   async findAll() {
@@ -45,17 +45,20 @@ export class SpecialistsService {
 
   async register(dto: RegisterTelegramDto) {
     let specialist = await this.repo.findOne({
-      where: { telegramId: dto.telegramId },
+      where: { telegramId: dto.telegramId as any },
     });
 
     if (specialist) {
+        if (specialist.isBanned) {
+          throw new ForbiddenException('Specialist is banned');
+        }
         specialist.username = dto.username || specialist.username;
         specialist.name = dto.name || specialist.name;
         return this.repo.save(specialist);
     }
 
     specialist = this.repo.create({
-      telegramId: dto.telegramId,
+      telegramId: dto.telegramId as any,
       name: dto.name,
       username: dto.username,
     });
@@ -65,10 +68,14 @@ export class SpecialistsService {
 
   async updateLocation(dto: UpdateLocationDto) {
     const specialist = await this.repo.findOneBy({
-      telegramId: dto.telegramId,
+      telegramId: dto.telegramId as any,
     });
 
     if (!specialist) throw new NotFoundException();
+
+    if (specialist.isBanned) {
+      throw new ForbiddenException('Specialist is banned');
+    }
 
     if (!specialist.isOnShift) {
       specialist.lastShiftStartedAt = new Date();
@@ -106,11 +113,15 @@ export class SpecialistsService {
       .getMany();
   }
 
-  async setOffline(telegramId: number) {
-    const specialist = await this.repo.findOneBy({ telegramId });
+  async setOffline(telegramId: string | number) {
+    const specialist = await this.repo.findOneBy({ telegramId: telegramId as any });
 
     if (!specialist) {
       throw new NotFoundException('Specialist not found');
+    }
+
+    if (specialist.isBanned) {
+      throw new ForbiddenException('Specialist is banned');
     }
 
     specialist.isOnShift = false;

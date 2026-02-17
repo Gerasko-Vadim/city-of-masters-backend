@@ -4,9 +4,9 @@ import { Telegraf } from 'telegraf';
 export const bot = new Telegraf(process.env.BOT_TOKEN!);
 
 export class TelegramService {
-  async sendOrderToSpecialist(telegramId: number, order: Order) {
+  async sendOrderToSpecialist(telegramId: string | number, order: Order) {
     const msg = await bot.telegram.sendMessage(
-      telegramId,
+      telegramId as any,
       `🆕 Новый заказ рядом!
 
 📍 ${order.address}
@@ -31,7 +31,7 @@ export class TelegramService {
     return msg.message_id;
   }
 
-  async sendMessage(telegramId: number, text: string) {
-    await bot.telegram.sendMessage(telegramId, text, { parse_mode: 'HTML' });
+  async sendMessage(telegramId: string | number, text: string) {
+    await bot.telegram.sendMessage(telegramId as any, text, { parse_mode: 'HTML' });
   }
 }

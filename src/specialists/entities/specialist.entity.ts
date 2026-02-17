@@ -15,7 +15,7 @@ export class Specialist {
   id: number;
 
   @Column({ unique: true, type: 'bigint', nullable: true })
-  telegramId: number;
+  telegramId: string;
 
   @Column({ nullable: true })
   name: string;

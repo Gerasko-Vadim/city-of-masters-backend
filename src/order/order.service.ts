@@ -96,7 +96,7 @@ export class OrderService {
     return this.orderRepository.remove(order);
   }
 
-  async findNearbyOrders(telegramId: number, radiusKm = 5) {
+  async findNearbyOrders(telegramId: string | number, radiusKm = 5) {
     const specialist =
       await this.specialistsService.findByTelegramId(telegramId);
     if (!specialist || !specialist.lat || !specialist.lng) return [];
@@ -166,7 +166,7 @@ export class OrderService {
       }
 
       order.status = OrderStatus.IN_PROGRESS;
-      order.assignedSpecialistId = telegramId;
+      order.assignedSpecialistId = String(telegramId);
       order.startedAt = new Date();
       const savedOrder = await this.orderRepository.save(order);
       this.eventsGateway.sendOrderUpdate(savedOrder);
@@ -185,18 +185,18 @@ export class OrderService {
     });
   }
 
-  async findActiveOrder(telegramId: number): Promise<Order | null> {
+  async findActiveOrder(telegramId: string | number): Promise<Order | null> {
     return this.orderRepository.findOne({
       where: {
-        assignedSpecialistId: telegramId,
+        assignedSpecialistId: telegramId as any,
         status: OrderStatus.IN_PROGRESS,
       },
     });
   }
 
-  async findBySpecialist(telegramId: number): Promise<Order[]> {
+  async findBySpecialist(telegramId: string | number): Promise<Order[]> {
     return this.orderRepository.find({
-      where: { assignedSpecialistId: telegramId },
+      where: { assignedSpecialistId: telegramId as any },
       order: { createdAt: 'DESC' },
     });
   }
