@@ -9,8 +9,9 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
-import { Order, OrderStatus } from './entities/order.entity';
+import { Order, OrderStatus, OrderSource } from './entities/order.entity';
 import { SpecialistsService } from 'src/specialists/specialists.service';
+import { ClientsService } from 'src/clients/clients.service';
 import { TelegramService } from 'src/telegram/telegram.service';
 import { InjectQueue } from '@nestjs/bull';
 import type { Queue } from 'bull';
@@ -25,6 +26,7 @@ export class OrderService {
     private orderRepository: Repository<Order>,
     @Inject(forwardRef(() => SpecialistsService))
     private readonly specialistsService: SpecialistsService,
+    private readonly clientsService: ClientsService,
     private readonly telegramService: TelegramService,
     @Inject(REDIS_CLIENT)
     private readonly redis: Redis,
@@ -34,7 +36,26 @@ export class OrderService {
   ) {}
 
   async create(dto: CreateOrderDto) {
-    const order = await this.orderRepository.save(this.orderRepository.create(dto));
+    let clientId = dto.clientId;
+    if (dto.telegramId) {
+      const client = await this.clientsService.register({
+        telegramId: dto.telegramId,
+        name: dto.customerName,
+        phone: dto.phone,
+      });
+      clientId = client.id;
+    }
+
+    const orderData = { 
+      ...dto,
+      source: (dto.source as OrderSource) || OrderSource.CLIENT
+    };
+    delete orderData.telegramId;
+    if (clientId) {
+      orderData.clientId = clientId;
+    }
+
+    const order = await this.orderRepository.save(this.orderRepository.create(orderData));
 
     if (order.status === OrderStatus.PAID) {
       await this.telegramQueue.add('new-order', {

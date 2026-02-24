@@ -37,4 +37,16 @@ export class CreateOrderDto {
 
   @IsNumber()
   lng: number;
+
+  @IsNumber()
+  @IsOptional()
+  clientId?: number;
+
+  @IsString()
+  @IsOptional()
+  telegramId?: string;
+
+  @IsString()
+  @IsOptional()
+  source?: string;
 }

@@ -9,12 +9,18 @@ import {
   JoinColumn,
 } from 'typeorm';
 import { Specialist } from '../../specialists/entities/specialist.entity';
+import { Client } from '../../clients/entities/client.entity';
 
 export enum OrderStatus {
   NEW = 'NEW',
   PAID = 'PAID',
   IN_PROGRESS = 'IN_PROGRESS',
   COMPLETED = 'COMPLETED',
+}
+
+export enum OrderSource {
+  CLIENT = 'CLIENT',
+  ADMIN = 'ADMIN',
 }
 
 @Entity()
@@ -24,6 +30,9 @@ export enum OrderStatus {
 export class Order {
   @PrimaryGeneratedColumn()
   id: number;
+
+  @Column({ type: 'enum', enum: OrderSource, default: OrderSource.CLIENT })
+  source: OrderSource;
 
   @Column()
   customerName: string;
@@ -60,6 +69,13 @@ export class Order {
 
   @Column({ type: 'float' })
   lng: number;
+
+  @Column({ nullable: true })
+  clientId?: number;
+
+  @ManyToOne(() => Client, (client) => client.orders, { nullable: true })
+  @JoinColumn({ name: 'clientId' })
+  client?: Client;
 
   @Column({ type: 'bigint', nullable: true })
   assignedSpecialistId?: string;

@@ -15,6 +15,8 @@ import { QueueModule } from './queue/queue.module';
 import { BullModule } from '@nestjs/bull';
 import { EventsModule } from './events/events.module';
 import { ChatModule } from './chat/chat.module';
+import { ClientsModule } from './clients/clients.module';
+import { Client } from './clients/entities/client.entity';
 
 @Module({
   imports: [
@@ -26,7 +28,7 @@ import { ChatModule } from './chat/chat.module';
       password: process.env.PGPASSWORD,
       database: process.env.PGDATABASE,
 
-      entities: [Order, Operator, Specialist, ChatMessage],
+      entities: [Order, Operator, Specialist, ChatMessage, Client],
       synchronize: true,
       ssl: { rejectUnauthorized: false },
     }),
@@ -56,6 +58,7 @@ import { ChatModule } from './chat/chat.module';
     QueueModule,
     EventsModule,
     ChatModule,
+    ClientsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
