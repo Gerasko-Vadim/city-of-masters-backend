@@ -1,7 +1,9 @@
-import { IsString, IsOptional } from 'class-validator';
+import { IsString, IsOptional, IsNotEmpty } from 'class-validator';
+import { Transform } from 'class-transformer';
 
 export class RegisterClientDto {
-  @IsString()
+  @IsNotEmpty()
+  @Transform(({ value }) => String(value))
   telegramId: string;
 
   @IsString()
