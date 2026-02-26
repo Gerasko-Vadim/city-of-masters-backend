@@ -6,6 +6,7 @@ import { EventsGateway } from '../events/events.gateway';
 import { TelegramService } from '../telegram/telegram.service';
 import { Order } from '../order/entities/order.entity';
 import { Specialist } from '../specialists/entities/specialist.entity';
+import { Client } from '../clients/entities/client.entity';
 
 @Injectable()
 export class ChatService {
@@ -16,11 +17,13 @@ export class ChatService {
     private orderRepo: Repository<Order>,
     @InjectRepository(Specialist)
     private specialistRepo: Repository<Specialist>,
+    @InjectRepository(Client)
+    private clientRepo: Repository<Client>,
     private eventsGateway: EventsGateway,
     private telegramService: TelegramService,
   ) {}
 
-  async getHistory(orderId?: number, specialistId?: number) {
+  async getHistory(orderId?: number, specialistId?: number, clientId?: number) {
     if (orderId) {
       const history = await this.chatRepo.find({
         where: { orderId },
@@ -32,12 +35,19 @@ export class ChatService {
     if (specialistId) {
       const specialist = await this.specialistRepo.findOne({ where: { id: specialistId } });
       const tid = specialist?.telegramId || specialistId;
-      // Show all messages for this specialist on their profile page
       const history = await this.chatRepo.find({
         where: { specialistId: tid as any },
         order: { createdAt: 'ASC' },
       });
       await this.markAsRead(undefined, specialistId);
+      return history;
+    }
+    if (clientId) {
+      const history = await this.chatRepo.find({
+        where: { clientId },
+        order: { createdAt: 'ASC' },
+      });
+      await this.markAsRead(undefined, undefined, clientId);
       return history;
     }
     return [];
@@ -54,21 +64,28 @@ export class ChatService {
     text: string,
     orderId?: number,
     specialistId?: number,
+    clientId?: number,
     operatorId?: number,
   ) {
     let telegramId: string | number | undefined;
     let resolvedTelegramId: string | number | undefined;
     let resolvedInternalSpecialistId: number | undefined = specialistId;
+    let resolvedInternalClientId: number | undefined = clientId;
 
     if (orderId) {
       const order = await this.orderRepo.findOne({
         where: { id: orderId },
-        relations: ['assignedSpecialist'],
+        relations: ['assignedSpecialist', 'client'],
       });
-      if (order && order.assignedSpecialist) {
-        telegramId = order.assignedSpecialist.telegramId;
-        resolvedTelegramId = order.assignedSpecialist.telegramId;
-        resolvedInternalSpecialistId = order.assignedSpecialist.id;
+      if (order) {
+        if (order.assignedSpecialist) {
+          telegramId = order.assignedSpecialist.telegramId;
+          resolvedTelegramId = order.assignedSpecialist.telegramId;
+          resolvedInternalSpecialistId = order.assignedSpecialist.id;
+        } else if (order.client) {
+          telegramId = order.client.telegramId;
+          resolvedInternalClientId = order.client.id;
+        }
       }
     } else if (specialistId) {
       const specialist = await this.specialistRepo.findOne({
@@ -78,23 +95,32 @@ export class ChatService {
         telegramId = specialist.telegramId;
         resolvedTelegramId = specialist.telegramId;
       }
+    } else if (clientId) {
+      const client = await this.clientRepo.findOne({
+        where: { id: clientId },
+      });
+      if (client) {
+        telegramId = client.telegramId;
+      }
     }
 
     const message = await this.chatRepo.save({
       orderId,
       specialistId: resolvedTelegramId as any,
+      clientId: resolvedInternalClientId,
       text,
       senderType: MessageSender.OPERATOR,
       senderId: operatorId,
     });
 
     if (orderId) {
-      console.log(`Emitting to chat_${orderId}`);
       this.eventsGateway.server.emit(`chat_${orderId}`, message);
     }
     if (resolvedInternalSpecialistId) {
-      console.log(`Emitting to chat_specialist_${resolvedInternalSpecialistId}`);
       this.eventsGateway.server.emit(`chat_specialist_${resolvedInternalSpecialistId}`, message);
+    }
+    if (resolvedInternalClientId) {
+      this.eventsGateway.server.emit(`chat_client_${resolvedInternalClientId}`, message);
     }
 
     if (telegramId) {
@@ -146,9 +172,48 @@ export class ChatService {
     return message;
   }
 
-  async markAsRead(orderId?: number, specialistId?: number) {
+  async sendFromClient(telegramId: string | number, text: string) {
+    const client = await this.clientRepo.findOne({
+      where: { telegramId: String(telegramId) },
+    });
+
+    if (!client) return null;
+
+    // Find active order if exists
+    const order = await this.orderRepo.findOne({
+      where: {
+        clientId: client.id,
+        status: 'PENDING' as any,
+      },
+    });
+
+    const message = await this.chatRepo.save({
+      orderId: order?.id,
+      clientId: client.id,
+      text,
+      senderType: MessageSender.CLIENT,
+      senderId: client.id,
+    });
+
+    if (order) {
+      this.eventsGateway.server.emit(`chat_${order.id}`, message);
+    }
+    this.eventsGateway.server.emit(`chat_client_${client.id}`, message);
+    
+    this.eventsGateway.server.emit('admin_notification', {
+      type: 'CHAT_MESSAGE',
+      clientId: client.id,
+      clientName: client.firstName || client.username,
+      text,
+      orderId: order?.id,
+    });
+
+    return message;
+  }
+
+  async markAsRead(orderId?: number, specialistId?: number, clientId?: number) {
     if (orderId) {
-      await this.chatRepo.update({ orderId, senderType: MessageSender.SPECIALIST }, { isRead: true });
+      await this.chatRepo.update({ orderId, isRead: false }, { isRead: true });
     } else if (specialistId) {
       const specialist = await this.specialistRepo.findOne({ where: { id: specialistId } });
       if (specialist) {
@@ -157,6 +222,11 @@ export class ChatService {
           { isRead: true }
         );
       }
+    } else if (clientId) {
+      await this.chatRepo.update(
+        { clientId, senderType: MessageSender.CLIENT, isRead: false },
+        { isRead: true }
+      );
     }
   }
 }

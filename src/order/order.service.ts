@@ -48,7 +48,8 @@ export class OrderService {
 
     const orderData = { 
       ...dto,
-      source: (dto.source as OrderSource) || OrderSource.CLIENT
+      source: (dto.source as OrderSource) || OrderSource.CLIENT,
+      commission: 500
     };
     delete orderData.telegramId;
     if (clientId) {
@@ -96,7 +97,7 @@ export class OrderService {
     const savedOrder = await this.orderRepository.save(order);
     console.log(`Order ${id} saved successfully`);
 
-    // Если статус изменился на PAID, запускаем поиск исполнителей
+    // Если статус изменился на PAID, запускаем поиск исполнителей и уведомляем клиента
     if (oldStatus !== OrderStatus.PAID && savedOrder.status === OrderStatus.PAID) {
       await this.telegramQueue.add('new-order', {
         id: savedOrder.id,
@@ -105,6 +106,18 @@ export class OrderService {
         address: savedOrder.address,
         totalAmount: savedOrder.totalAmount,
       });
+
+      // Уведомление клиента
+      const orderWithClient = await this.orderRepository.findOne({
+        where: { id: savedOrder.id },
+        relations: ['client'],
+      });
+      if (orderWithClient?.client?.telegramId) {
+        await this.telegramService.sendMessage(
+          orderWithClient.client.telegramId,
+          `✅ <b>Оплата подтверждена!</b>\n\nМы начали поиск ближайшего мастера. Пожалуйста, ожидайте, это обычно занимает несколько минут.`,
+        );
+      }
     }
 
     this.eventsGateway.sendOrderUpdate(savedOrder);
@@ -190,6 +203,20 @@ export class OrderService {
       order.assignedSpecialistId = String(telegramId);
       order.startedAt = new Date();
       const savedOrder = await this.orderRepository.save(order);
+      
+      // Уведомление клиента о назначении мастера
+      const orderWithRelations = await this.orderRepository.findOne({
+        where: { id: savedOrder.id },
+        relations: ['client', 'assignedSpecialist'],
+      });
+      if (orderWithRelations?.client?.telegramId) {
+        const specName = orderWithRelations.assignedSpecialist?.name || 'Мастер';
+        await this.telegramService.sendMessage(
+          orderWithRelations.client.telegramId,
+          `👷 <b>Мастер найден!</b>\n\nК вам выехал ${specName}. Вы можете отследить его местоположение в приложении.`,
+        );
+      }
+
       this.eventsGateway.sendOrderUpdate(savedOrder);
       return savedOrder;
     } catch (error) {
@@ -238,5 +265,19 @@ export class OrderService {
     const savedOrder = await this.orderRepository.save(order);
     this.eventsGateway.sendOrderUpdate(savedOrder);
     return savedOrder;
+  }
+
+  async findActiveClientOrder(telegramId: string): Promise<Order | null> {
+    const client = await this.clientsService.findByTelegramId(telegramId);
+    if (!client) return null;
+
+    return this.orderRepository.findOne({
+      where: [
+        { clientId: client.id, status: OrderStatus.PAID },
+        { clientId: client.id, status: OrderStatus.IN_PROGRESS },
+      ],
+      relations: ['assignedSpecialist'],
+      order: { createdAt: 'DESC' },
+    });
   }
 }

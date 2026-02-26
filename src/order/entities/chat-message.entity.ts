@@ -8,10 +8,12 @@ import {
 } from 'typeorm';
 import { Order } from './order.entity';
 import { Specialist } from '../../specialists/entities/specialist.entity';
+import { Client } from '../../clients/entities/client.entity';
 
 export enum MessageSender {
   SPECIALIST = 'SPECIALIST',
   OPERATOR = 'OPERATOR',
+  CLIENT = 'CLIENT',
 }
 
 @Entity()
@@ -32,6 +34,13 @@ export class ChatMessage {
   @ManyToOne(() => Specialist, { nullable: true })
   @JoinColumn({ name: 'specialistId', referencedColumnName: 'telegramId' })
   specialist: Specialist;
+
+  @Column({ nullable: true })
+  clientId: number;
+
+  @ManyToOne(() => Client, { nullable: true })
+  @JoinColumn({ name: 'clientId' })
+  client: Client;
 
   @Column({ type: 'text' })
   text: string;

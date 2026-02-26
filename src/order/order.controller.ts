@@ -73,5 +73,10 @@ export class OrderController {
   ) {
     return this.orderService.completeByBot(id, body.telegramId);
   }
+
+  @Get('active/:telegramId')
+  findActiveOrder(@Param('telegramId') telegramId: string) {
+    return this.orderService.findActiveClientOrder(telegramId);
+  }
 }
 

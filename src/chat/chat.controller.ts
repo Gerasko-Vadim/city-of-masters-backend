@@ -13,15 +13,15 @@ export class ChatController {
   }
 
   @UseGuards(JwtAuthGuard)
-  @Get('specialist/:specialistId')
-  async getSpecialistHistory(@Param('specialistId') specialistId: string) {
-    return this.chatService.getHistory(undefined, Number(specialistId));
+  @Get('client/:clientId')
+  async getClientHistory(@Param('clientId') clientId: string) {
+    return this.chatService.getHistory(undefined, undefined, Number(clientId));
   }
 
   @UseGuards(JwtAuthGuard)
   @Post('send')
   async sendFromOperator(
-    @Body() body: { orderId?: number; specialistId?: number; text: string },
+    @Body() body: { orderId?: number; specialistId?: number; clientId?: number; text: string },
     @Request() req: any,
   ) {
     // req.user has the operator info
@@ -29,18 +29,19 @@ export class ChatController {
       body.text,
       body.orderId,
       body.specialistId,
+      body.clientId,
       req.user.id,
     );
   }
 
-  @Post('specialist-send')
-  async sendFromSpecialist(@Body() body: { telegramId: number; text: string }) {
-    return this.chatService.sendFromSpecialist(body.telegramId, body.text);
+  @Post('client-send')
+  async sendFromClient(@Body() body: { telegramId: number; text: string }) {
+    return this.chatService.sendFromClient(body.telegramId, body.text);
   }
 
   @UseGuards(JwtAuthGuard)
   @Post('mark-as-read')
-  async markAsRead(@Body() body: { orderId?: number; specialistId?: number }) {
-    return this.chatService.markAsRead(body.orderId, body.specialistId);
+  async markAsRead(@Body() body: { orderId?: number; specialistId?: number; clientId?: number }) {
+    return this.chatService.markAsRead(body.orderId, body.specialistId, body.clientId);
   }
 }

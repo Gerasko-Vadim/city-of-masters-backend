@@ -7,6 +7,7 @@ import {
   OneToMany,
 } from 'typeorm';
 import { Order } from '../../order/entities/order.entity';
+import { ChatMessage } from '../../order/entities/chat-message.entity';
 
 @Entity()
 export class Client {
@@ -36,4 +37,7 @@ export class Client {
 
   @OneToMany(() => Order, (order) => order.client)
   orders: Order[];
+
+  @OneToMany(() => ChatMessage, (message) => message.client)
+  chatMessages: ChatMessage[];
 }

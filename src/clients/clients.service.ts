@@ -36,7 +36,10 @@ export class ClientsService {
   }
 
   async findOne(id: number) {
-    return this.clientRepository.findOne({ where: { id } });
+    return this.clientRepository.findOne({ 
+      where: { id },
+      relations: ['orders']
+    });
   }
 
   async findAll() {
