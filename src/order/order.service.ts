@@ -57,6 +57,18 @@ export class OrderService {
     }
 
     const order = await this.orderRepository.save(this.orderRepository.create(orderData));
+    console.log(`Order ${order.id} created successfully`);
+
+    if (dto.telegramId) {
+      try {
+        await this.telegramService.sendMessage(
+          dto.telegramId,
+          `📝 <b>Заказ №${order.id} успешно создан!</b>\n\nДля начала поиска мастера, пожалуйста, отправьте скриншот оплаты (500 сом) в этот чат.\n\nКак только мы подтвердим оплату, поиск начнется автоматически.`,
+        );
+      } catch (err) {
+        console.error(`Failed to send order creation notification to ${dto.telegramId}`, err);
+      }
+    }
 
     if (order.status === OrderStatus.PAID) {
       await this.telegramQueue.add('new-order', {
