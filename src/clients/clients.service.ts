@@ -43,6 +43,26 @@ export class ClientsService {
   }
 
   async findAll() {
-    return this.clientRepository.find({ order: { createdAt: 'DESC' } });
+    const clients = await this.clientRepository.find({
+      relations: ['orders', 'chatMessages'],
+      order: { createdAt: 'DESC' },
+    });
+
+    return clients.map((client) => {
+      const hasNewOrder = client.orders.some((o) => o.status === 'NEW');
+      const unreadCount = client.chatMessages.filter(
+        (m) => !m.isRead && m.senderType === 'CLIENT',
+      ).length;
+
+      return {
+        ...client,
+        hasNewOrder,
+        unreadCount,
+        // Remove large relations to keep response size manageable if needed, 
+        // but here it's likely fine for the admin panel.
+        orders: undefined,
+        chatMessages: undefined,
+      };
+    });
   }
 }

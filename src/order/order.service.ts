@@ -81,6 +81,13 @@ export class OrderService {
     }
 
     this.eventsGateway.sendOrderUpdate(order);
+    
+    // Notify admin panel about new order for sound alert
+    this.eventsGateway.server.emit('admin_notification', {
+      type: 'NEW_ORDER',
+      orderId: order.id,
+      customerName: order.customerName,
+    });
 
     return order;
   }
