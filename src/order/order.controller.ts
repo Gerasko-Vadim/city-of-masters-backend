@@ -18,7 +18,7 @@ import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 export class OrderController {
   constructor(private readonly orderService: OrderService) {}
 
-  @UseGuards(JwtAuthGuard)
+  // Public endpoint for both Admin and Mini App (handles lazy registration)
   @Post()
   create(@Body() createOrderDto: CreateOrderDto) {
     return this.orderService.create(createOrderDto);
