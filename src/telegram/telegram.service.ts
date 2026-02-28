@@ -49,6 +49,10 @@ export class TelegramService {
     await clientBot.telegram.sendMessage(telegramId as any, text, { parse_mode: 'HTML' });
   }
 
+  async sendToSpecialist(telegramId: string | number, text: string) {
+    await specialistBot.telegram.sendMessage(telegramId as any, text, { parse_mode: 'HTML' });
+  }
+
   async sendUnbanNotification(telegramId: string | number) {
     await specialistBot.telegram.sendMessage(
       telegramId as any,

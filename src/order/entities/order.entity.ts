@@ -78,13 +78,13 @@ export class Order {
   client?: Client;
 
   @Column({ type: 'bigint', nullable: true })
-  assignedSpecialistId?: string;
+  assignedSpecialistId?: string | null;
 
   @Column({ type: 'timestamp', nullable: true })
-  startedAt?: Date;
+  startedAt?: Date | null;
 
   @Column({ type: 'timestamp', nullable: true })
-  completedAt?: Date;
+  completedAt?: Date | null;
 
   @ManyToOne(() => Specialist, { nullable: true })
   @JoinColumn({ name: 'assignedSpecialistId', referencedColumnName: 'telegramId' })

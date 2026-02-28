@@ -72,5 +72,10 @@ export class SpecialistsController {
   async ban(@Param('id', ParseIntPipe) id: number, @Body('isBanned') isBanned: boolean) {
     return this.specialistsService.setBan(id, isBanned);
   }
+  
+  @Post('broadcast')
+  async broadcast(@Body('text') text: string, @Body('filter') filter: 'ALL' | 'ON_SHIFT' | 'OFF_SHIFT') {
+    return this.specialistsService.broadcast(text, filter);
+  }
 }
 

@@ -86,6 +86,7 @@ export class SpecialistsService {
     specialist.isOnShift = true;
     specialist.lat = dto.lat;
     specialist.lng = dto.lng;
+    specialist.lastLocationAt = new Date();
 
     const saved = await this.repo.save(specialist);
     this.eventsGateway.sendSpecialistUpdate(saved);
@@ -155,6 +156,32 @@ export class SpecialistsService {
     }
 
     return saved;
+  }
+
+  async broadcast(text: string, filter: 'ALL' | 'ON_SHIFT' | 'OFF_SHIFT') {
+    const query = this.repo.createQueryBuilder('s').where('s.isBanned = false');
+
+    if (filter === 'ON_SHIFT') {
+      query.andWhere('s.isOnShift = true');
+    } else if (filter === 'OFF_SHIFT') {
+      query.andWhere('s.isOnShift = false');
+    }
+
+    const specialists = await query.getMany();
+    let sentCount = 0;
+
+    for (const spec of specialists) {
+      if (spec.telegramId) {
+        try {
+          await this.telegramService.sendToSpecialist(spec.telegramId, text);
+          sentCount++;
+        } catch (error) {
+          console.error(`Failed to send broadcast to ${spec.telegramId}:`, error.message);
+        }
+      }
+    }
+
+    return { sentCount, total: specialists.length };
   }
 }
 

@@ -113,10 +113,20 @@ export class OrderService {
     const oldStatus = order.status;
 
     Object.assign(order, updateOrderDto);
-    const savedOrder = await this.orderRepository.save(order);
-    console.log(`Order ${id} saved successfully`);
 
-    // Если статус изменился на PAID, запускаем поиск исполнителей и уведомляем клиента
+    // Если статус меняется на PAID (даже если он был COMPLETED или IN_PROGRESS)
+    // Сбрасываем данные о мастере и времени, чтобы заказ стал "чистым" для нового поиска
+    if (updateOrderDto.status === OrderStatus.PAID && oldStatus !== OrderStatus.PAID) {
+      order.assignedSpecialistId = null;
+      order.startedAt = null;
+      order.completedAt = null;
+      // Также можно сбросить и другие поля, если нужно
+    }
+
+    const savedOrder = await this.orderRepository.save(order);
+    console.log(`Order ${id} saved successfully with status ${savedOrder.status}`);
+
+    // Если статус стал PAID, запускаем поиск исполнителей и уведомляем клиента
     if (oldStatus !== OrderStatus.PAID && savedOrder.status === OrderStatus.PAID) {
       await this.telegramQueue.add('new-order', {
         id: savedOrder.id,
@@ -134,7 +144,7 @@ export class OrderService {
       if (orderWithClient?.client?.telegramId) {
         await this.telegramService.sendMessage(
           orderWithClient.client.telegramId,
-          `✅ <b>Оплата подтверждена!</b>\n\nМы начали поиск ближайшего мастера. Пожалуйста, ожидайте, это обычно занимает несколько минут.`,
+          `✅ <b>Поиск мастера возобновлен!</b>\n\nСтатус вашего заказа №${savedOrder.id} изменен на «Поиск мастера». Мы снова ищем ближайшего специалиста для вас.`,
         );
       }
     }
@@ -232,7 +242,7 @@ export class OrderService {
         const specName = orderWithRelations.assignedSpecialist?.name || 'Мастер';
         await this.telegramService.sendMessage(
           orderWithRelations.client.telegramId,
-          `👷 <b>Мастер найден!</b>\n\nК вам выехал ${specName}. Вы можете отследить его местоположение в приложении.`,
+          `👷 <b>Мастер найден!</b>\n\n${specName} взял ваш заказ и уже едет к вам. Чтобы узнать, где сейчас мастер, вы можете открыть мини-приложение и отследить его в реальном времени.`,
         );
       }
 
@@ -282,6 +292,20 @@ export class OrderService {
     order.status = OrderStatus.COMPLETED;
     order.completedAt = new Date();
     const savedOrder = await this.orderRepository.save(order);
+    
+    // Уведомление клиента о завершении заказа
+    const orderWithClient = await this.orderRepository.findOne({
+      where: { id: savedOrder.id },
+      relations: ['client'],
+    });
+
+    if (orderWithClient?.client?.telegramId) {
+      await this.telegramService.sendMessage(
+        orderWithClient.client.telegramId,
+        `✅ <b>Заказ завершен!</b>\n\nБлагодарим вас за то, что выбрали наш сервис! Мы будем рады видеть вас снова. Желаем вам прекрасного дня! 😊`,
+      );
+    }
+
     this.eventsGateway.sendOrderUpdate(savedOrder);
     return savedOrder;
   }
