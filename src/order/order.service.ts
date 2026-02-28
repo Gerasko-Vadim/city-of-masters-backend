@@ -124,10 +124,11 @@ export class OrderService {
     }
 
     const savedOrder = await this.orderRepository.save(order);
-    console.log(`Order ${id} saved successfully with status ${savedOrder.status}`);
+    console.log(`Order ${id} saved successfully with status ${savedOrder.status} (oldStatus: ${oldStatus})`);
 
     // Если статус стал PAID, запускаем поиск исполнителей и уведомляем клиента
     if (oldStatus !== OrderStatus.PAID && savedOrder.status === OrderStatus.PAID) {
+      console.log(`Notification trigger activated for order ${savedOrder.id}`);
       await this.telegramQueue.add('new-order', {
         id: savedOrder.id,
         lat: savedOrder.lat,
