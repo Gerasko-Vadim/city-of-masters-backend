@@ -186,18 +186,9 @@ export class ChatService {
 
     if (!client) return null;
 
-    // Find active order if exists
-    const order = await this.orderRepo.findOne({
-      where: {
-        clientId: client.id,
-        status: In(['PAID', 'IN_PROGRESS'] as any[]),
-      },
-    });
-
     const processedImageUrl = await this.processImageUrl(imageUrl);
 
     const message = await this.chatRepo.save({
-      orderId: order?.id,
       clientId: client.id,
       text,
       imageUrl: processedImageUrl,
@@ -205,9 +196,6 @@ export class ChatService {
       senderId: client.id,
     });
 
-    if (order) {
-      this.eventsGateway.server.emit(`chat_${order.id}`, message);
-    }
     this.eventsGateway.server.emit(`chat_client_${client.id}`, message);
     
     this.eventsGateway.server.emit('admin_notification', {
@@ -215,7 +203,6 @@ export class ChatService {
       clientId: client.id,
       clientName: client.firstName || client.username,
       text: text || 'Пользователь отправил фото',
-      orderId: order?.id,
     });
 
     return message;
