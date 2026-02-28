@@ -9,12 +9,6 @@ import * as fs from 'fs';
 export class ChatController {
   constructor(private readonly chatService: ChatService) {}
 
-  @UseGuards(JwtAuthGuard)
-  @Get(':orderId')
-  async getHistory(@Param('orderId') orderId: string) {
-    return this.chatService.getHistory(Number(orderId));
-  }
-
   @Get('photo/:filename')
   servePhoto(@Param('filename') filename: string, @Res() res: Response) {
     const filePath = path.join(process.cwd(), 'uploads', 'chats', filename);
@@ -28,6 +22,12 @@ export class ChatController {
   @Get('client/:clientId')
   async getClientHistory(@Param('clientId') clientId: string) {
     return this.chatService.getHistory(undefined, undefined, Number(clientId));
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get(':orderId')
+  async getHistory(@Param('orderId') orderId: string) {
+    return this.chatService.getHistory(Number(orderId));
   }
 
   @UseGuards(JwtAuthGuard)
