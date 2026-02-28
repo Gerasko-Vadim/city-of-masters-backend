@@ -1,6 +1,9 @@
-import { Controller, Get, Post, Body, Param, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, UseGuards, Request, Res } from '@nestjs/common';
 import { ChatService } from './chat.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import type { Response } from 'express';
+import * as path from 'path';
+import * as fs from 'fs';
 
 @Controller('chat')
 export class ChatController {
@@ -10,6 +13,15 @@ export class ChatController {
   @Get(':orderId')
   async getHistory(@Param('orderId') orderId: string) {
     return this.chatService.getHistory(Number(orderId));
+  }
+
+  @Get('photo/:filename')
+  servePhoto(@Param('filename') filename: string, @Res() res: Response) {
+    const filePath = path.join(process.cwd(), 'uploads', 'chats', filename);
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).send('Not found');
+    }
+    res.sendFile(filePath);
   }
 
   @UseGuards(JwtAuthGuard)

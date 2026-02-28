@@ -1,12 +1,16 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, IsNull } from 'typeorm';
+import { Repository, IsNull, In } from 'typeorm';
 import { ChatMessage, MessageSender } from '../order/entities/chat-message.entity';
 import { EventsGateway } from '../events/events.gateway';
 import { TelegramService } from '../telegram/telegram.service';
 import { Order } from '../order/entities/order.entity';
 import { Specialist } from '../specialists/entities/specialist.entity';
 import { Client } from '../clients/entities/client.entity';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as crypto from 'crypto';
+import axios from 'axios';
 
 @Injectable()
 export class ChatService {
@@ -147,11 +151,13 @@ export class ChatService {
       },
     });
 
+    const processedImageUrl = await this.processImageUrl(imageUrl);
+
     const message = await this.chatRepo.save({
       orderId: order?.id,
       specialistId: specialist.telegramId,
       text,
-      imageUrl,
+      imageUrl: processedImageUrl,
       senderType: MessageSender.SPECIALIST,
       senderId: specialist.telegramId as any,
     });
@@ -184,15 +190,17 @@ export class ChatService {
     const order = await this.orderRepo.findOne({
       where: {
         clientId: client.id,
-        status: 'PAID' as any, // Fix: Use PAID or IN_PROGRESS for searching active order
+        status: In(['PAID', 'IN_PROGRESS'] as any[]),
       },
     });
+
+    const processedImageUrl = await this.processImageUrl(imageUrl);
 
     const message = await this.chatRepo.save({
       orderId: order?.id,
       clientId: client.id,
       text,
-      imageUrl,
+      imageUrl: processedImageUrl,
       senderType: MessageSender.CLIENT,
       senderId: client.id,
     });
@@ -229,6 +237,32 @@ export class ChatService {
         { clientId, senderType: MessageSender.CLIENT, isRead: false },
         { isRead: true }
       );
+    }
+  }
+
+  private async processImageUrl(imageUrl?: string): Promise<string | undefined> {
+    if (!imageUrl) return undefined;
+    if (!imageUrl.includes('api.telegram.org')) {
+      return imageUrl;
+    }
+    try {
+      const filename = crypto.randomUUID() + '.jpg';
+      const uploadDir = path.join(process.cwd(), 'uploads', 'chats');
+      if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+      }
+      const filepath = path.join(uploadDir, filename);
+
+      const response = await axios({
+        url: imageUrl,
+        responseType: 'arraybuffer',
+      });
+      fs.writeFileSync(filepath, response.data);
+
+      return `/chat/photo/${filename}`;
+    } catch (err) {
+      console.error('Failed to download image:', err);
+      return imageUrl;
     }
   }
 }
