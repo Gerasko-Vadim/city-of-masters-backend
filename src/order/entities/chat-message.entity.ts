@@ -42,8 +42,11 @@ export class ChatMessage {
   @JoinColumn({ name: 'clientId' })
   client: Client;
 
-  @Column({ type: 'text' })
+  @Column({ type: 'text', nullable: true })
   text: string;
+
+  @Column({ type: 'text', nullable: true })
+  imageUrl: string;
 
   @Column({ type: 'enum', enum: MessageSender })
   senderType: MessageSender;

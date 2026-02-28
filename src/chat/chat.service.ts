@@ -133,7 +133,7 @@ export class ChatService {
     return message;
   }
 
-  async sendFromSpecialist(telegramId: string | number, text: string) {
+  async sendFromSpecialist(telegramId: string | number, text?: string, imageUrl?: string) {
     const specialist = await this.specialistRepo.findOne({
       where: { telegramId: telegramId as any },
     });
@@ -151,10 +151,11 @@ export class ChatService {
       orderId: order?.id,
       specialistId: specialist.telegramId,
       text,
+      imageUrl,
       senderType: MessageSender.SPECIALIST,
       senderId: specialist.telegramId as any,
     });
-// ... (rest of the file is unchanged, just fixing the types in this block)
+
     if (order) {
       this.eventsGateway.server.emit(`chat_${order.id}`, message);
     }
@@ -165,14 +166,14 @@ export class ChatService {
       type: 'CHAT_MESSAGE',
       specialistId: specialist.id,
       specialistName: specialist.name || specialist.username,
-      text,
+      text: text || 'Пользователь отправил фото',
       orderId: order?.id,
     });
 
     return message;
   }
 
-  async sendFromClient(telegramId: string | number, text: string) {
+  async sendFromClient(telegramId: string | number, text?: string, imageUrl?: string) {
     const client = await this.clientRepo.findOne({
       where: { telegramId: String(telegramId) },
     });
@@ -183,7 +184,7 @@ export class ChatService {
     const order = await this.orderRepo.findOne({
       where: {
         clientId: client.id,
-        status: 'PENDING' as any,
+        status: 'PAID' as any, // Fix: Use PAID or IN_PROGRESS for searching active order
       },
     });
 
@@ -191,6 +192,7 @@ export class ChatService {
       orderId: order?.id,
       clientId: client.id,
       text,
+      imageUrl,
       senderType: MessageSender.CLIENT,
       senderId: client.id,
     });
@@ -204,7 +206,7 @@ export class ChatService {
       type: 'CHAT_MESSAGE',
       clientId: client.id,
       clientName: client.firstName || client.username,
-      text,
+      text: text || 'Пользователь отправил фото',
       orderId: order?.id,
     });
 

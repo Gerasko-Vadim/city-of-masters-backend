@@ -35,8 +35,8 @@ export class ChatController {
   }
 
   @Post('client-send')
-  async sendFromClient(@Body() body: { telegramId: number; text: string }) {
-    return this.chatService.sendFromClient(body.telegramId, body.text);
+  async sendFromClient(@Body() body: { telegramId: number; text?: string; imageUrl?: string }) {
+    return this.chatService.sendFromClient(body.telegramId, body.text, body.imageUrl);
   }
 
   @UseGuards(JwtAuthGuard)
