@@ -36,14 +36,17 @@ async function bootstrap() {
     // Non-fatal: app continues even if patch fails
   }
 
-  // CORS: whitelist from CORS_ORIGINS env var (comma-separated) or localhost fallback
+  // CORS: whitelist from CORS_ORIGINS env var (comma-separated)
+  // If not set — allow all origins (Telegram Mini App, Railway, etc.)
   const allowedOrigins = process.env.CORS_ORIGINS
     ? process.env.CORS_ORIGINS.split(',').map((o) => o.trim())
-    : ['http://localhost:3000', 'http://localhost:5173'];
+    : null;
 
   app.enableCors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (mobile apps, curl, Telegram bots)
+      // No CORS_ORIGINS configured → allow all (default for Telegram Mini App)
+      if (!allowedOrigins) return callback(null, true);
+      // Requests with no origin (mobile apps, bots, Telegram WebView)
       if (!origin) return callback(null, true);
       if (allowedOrigins.includes(origin)) return callback(null, true);
       callback(new Error(`CORS: origin ${origin} not allowed`));
