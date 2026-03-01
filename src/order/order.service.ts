@@ -145,7 +145,7 @@ export class OrderService {
       if (orderWithClient?.client?.telegramId) {
         await this.telegramService.sendMessage(
           orderWithClient.client.telegramId,
-          `✅ <b>Поиск мастера возобновлен!</b>\n\nСтатус вашего заказа №${savedOrder.id} изменен на «Поиск мастера». Мы снова ищем ближайшего специалиста для вас.`,
+          `✅ <b>Оплата подтверждена — ищем мастера!</b>\n\nМы уже подбираем ближайшего специалиста для вас. Обычно это занимает до 20 минут — мы пришлём уведомление, как только мастер примет заказ 🔧`,
         );
       }
     }
@@ -300,10 +300,7 @@ export class OrderService {
     });
 
     if (orderWithClient?.client?.telegramId) {
-      await this.telegramService.sendMessage(
-        orderWithClient.client.telegramId,
-        `✅ <b>Заказ завершен!</b>\n\nБлагодарим вас за то, что выбрали наш сервис! Мы будем рады видеть вас снова. Желаем вам прекрасного дня! 😊`,
-      );
+      await this.telegramService.sendOrderCompletedToClient(orderWithClient.client.telegramId);
     }
 
     this.eventsGateway.sendOrderUpdate(savedOrder);

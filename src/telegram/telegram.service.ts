@@ -45,8 +45,22 @@ export class TelegramService {
   }
 
   async sendMessage(telegramId: string | number, text: string) {
-    // This is primarily used for clients (payment confirmed, master assigned)
     await clientBot.telegram.sendMessage(telegramId as any, text, { parse_mode: 'HTML' });
+  }
+
+  async sendOrderCompletedToClient(telegramId: string | number) {
+    await clientBot.telegram.sendMessage(
+      telegramId as any,
+      `✅ <b>Заказ выполнен!</b>\n\nБлагодарим, что выбрали Город Мастеров — надеемся, мастер оправдал ваши ожидания 😊\n\nПрекрасного настроения и хорошего дня! <b>Город Мастеров</b> всегда рядом 🏠`,
+      {
+        parse_mode: 'HTML',
+        reply_markup: {
+          inline_keyboard: [[
+            { text: '🔧 Заказать снова', web_app: { url: process.env.CLIENT_MINI_APP_URL! } },
+          ]],
+        },
+      },
+    );
   }
 
   async sendToSpecialist(telegramId: string | number, text: string) {
