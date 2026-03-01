@@ -218,15 +218,14 @@ export class OrderService {
       'NX',
     );
 
-    if (!lock) throw new ConflictException('Order already taken');
+    if (!lock) throw new ConflictException('Этот заказ уже кто-то берёт прямо сейчас');
 
     try {
       const order = await this.orderRepository.findOneBy({ id: orderId });
 
       if (!order || order.status !== OrderStatus.PAID) {
-        // Release lock if order is invalid
         await this.redis.del(lockKey);
-        throw new ConflictException('Order not available (must be PAID)');
+        throw new ConflictException('Заказ уже взят другим мастером');
       }
 
       order.status = OrderStatus.IN_PROGRESS;
