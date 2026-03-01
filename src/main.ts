@@ -36,9 +36,20 @@ async function bootstrap() {
     throw error; // Re-throw to trigger bootstrap catch
   }
 
+  // CORS: whitelist from CORS_ORIGINS env var (comma-separated) or localhost fallback
+  const allowedOrigins = process.env.CORS_ORIGINS
+    ? process.env.CORS_ORIGINS.split(',').map((o) => o.trim())
+    : ['http://localhost:3000', 'http://localhost:5173'];
+
   app.enableCors({
-    origin: true,
+    origin: (origin, callback) => {
+      // Allow requests with no origin (mobile apps, curl, Telegram bots)
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) return callback(null, true);
+      callback(new Error(`CORS: origin ${origin} not allowed`));
+    },
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    credentials: true,
   });
 
   // ✅ Seed admin (wrapped in try-catch to prevent startup crash if DB is not ready)
