@@ -19,6 +19,7 @@ import { ClientsModule } from './clients/clients.module';
 import { Client } from './clients/entities/client.entity';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
+import { InitClientChatAndOrderUpdates1740825600000 } from './migrations/1740825600000-InitClientChatAndOrderUpdates';
 
 @Module({
   imports: [
@@ -32,6 +33,8 @@ import { APP_GUARD } from '@nestjs/core';
 
       entities: [Order, Operator, Specialist, ChatMessage, Client],
       synchronize: process.env.NODE_ENV !== 'production',
+      migrations: [InitClientChatAndOrderUpdates1740825600000],
+      migrationsRun: true,
       ssl: { rejectUnauthorized: false },
     }),
     BullModule.forRootAsync({
