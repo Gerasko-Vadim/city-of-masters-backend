@@ -33,7 +33,7 @@ async function bootstrap() {
     console.log('Column check/patch completed');
   } catch (error) {
     console.error('❌ Database verification/patch failed:', error.message);
-    throw error; // Re-throw to trigger bootstrap catch
+    // Non-fatal: app continues even if patch fails
   }
 
   // CORS: whitelist from CORS_ORIGINS env var (comma-separated) or localhost fallback
