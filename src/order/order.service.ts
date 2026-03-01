@@ -214,7 +214,7 @@ export class OrderService {
       lockKey,
       String(telegramId),
       'PX',
-      10000,
+      30000,
       'NX',
     );
 
