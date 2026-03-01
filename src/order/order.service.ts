@@ -9,8 +9,9 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
-import { Order, OrderStatus } from './entities/order.entity';
+import { Order, OrderStatus, OrderSource } from './entities/order.entity';
 import { SpecialistsService } from 'src/specialists/specialists.service';
+import { ClientsService } from 'src/clients/clients.service';
 import { TelegramService } from 'src/telegram/telegram.service';
 import { InjectQueue } from '@nestjs/bull';
 import type { Queue } from 'bull';
@@ -25,6 +26,7 @@ export class OrderService {
     private orderRepository: Repository<Order>,
     @Inject(forwardRef(() => SpecialistsService))
     private readonly specialistsService: SpecialistsService,
+    private readonly clientsService: ClientsService,
     private readonly telegramService: TelegramService,
     @Inject(REDIS_CLIENT)
     private readonly redis: Redis,
@@ -34,7 +36,39 @@ export class OrderService {
   ) {}
 
   async create(dto: CreateOrderDto) {
-    const order = await this.orderRepository.save(this.orderRepository.create(dto));
+    let clientId = dto.clientId;
+    if (dto.telegramId) {
+      const client = await this.clientsService.register({
+        telegramId: dto.telegramId,
+        name: dto.customerName,
+        phone: dto.phone,
+      });
+      clientId = client.id;
+    }
+
+    const orderData = { 
+      ...dto,
+      source: (dto.source as OrderSource) || OrderSource.CLIENT,
+      commission: 500
+    };
+    delete orderData.telegramId;
+    if (clientId) {
+      orderData.clientId = clientId;
+    }
+
+    const order = await this.orderRepository.save(this.orderRepository.create(orderData));
+    console.log(`Order ${order.id} created successfully`);
+
+    if (dto.telegramId) {
+      try {
+        await this.telegramService.sendMessage(
+          dto.telegramId,
+          `📝 <b>Заказ №${order.id} успешно создан!</b>\n\nДля начала поиска мастера, пожалуйста, отправьте скриншот оплаты (500 сом) в этот чат.\n\nКак только мы подтвердим оплату, поиск начнется автоматически.`,
+        );
+      } catch (err) {
+        console.error(`Failed to send order creation notification to ${dto.telegramId}`, err);
+      }
+    }
 
     if (order.status === OrderStatus.PAID) {
       await this.telegramQueue.add('new-order', {
@@ -47,6 +81,13 @@ export class OrderService {
     }
 
     this.eventsGateway.sendOrderUpdate(order);
+    
+    // Notify admin panel about new order for sound alert
+    this.eventsGateway.server.emit('admin_notification', {
+      type: 'NEW_ORDER',
+      orderId: order.id,
+      customerName: order.customerName,
+    });
 
     return order;
   }
@@ -72,11 +113,22 @@ export class OrderService {
     const oldStatus = order.status;
 
     Object.assign(order, updateOrderDto);
-    const savedOrder = await this.orderRepository.save(order);
-    console.log(`Order ${id} saved successfully`);
 
-    // Если статус изменился на PAID, запускаем поиск исполнителей
+    // Если статус меняется на PAID (даже если он был COMPLETED или IN_PROGRESS)
+    // Сбрасываем данные о мастере и времени, чтобы заказ стал "чистым" для нового поиска
+    if (updateOrderDto.status === OrderStatus.PAID && oldStatus !== OrderStatus.PAID) {
+      order.assignedSpecialistId = null;
+      order.startedAt = null;
+      order.completedAt = null;
+      // Также можно сбросить и другие поля, если нужно
+    }
+
+    const savedOrder = await this.orderRepository.save(order);
+    console.log(`Order ${id} saved successfully with status ${savedOrder.status} (oldStatus: ${oldStatus})`);
+
+    // Если статус стал PAID, запускаем поиск исполнителей и уведомляем клиента
     if (oldStatus !== OrderStatus.PAID && savedOrder.status === OrderStatus.PAID) {
+      console.log(`Notification trigger activated for order ${savedOrder.id}`);
       await this.telegramQueue.add('new-order', {
         id: savedOrder.id,
         lat: savedOrder.lat,
@@ -84,6 +136,18 @@ export class OrderService {
         address: savedOrder.address,
         totalAmount: savedOrder.totalAmount,
       });
+
+      // Уведомление клиента
+      const orderWithClient = await this.orderRepository.findOne({
+        where: { id: savedOrder.id },
+        relations: ['client'],
+      });
+      if (orderWithClient?.client?.telegramId) {
+        await this.telegramService.sendMessage(
+          orderWithClient.client.telegramId,
+          `✅ <b>Оплата подтверждена — ищем мастера!</b>\n\nМы уже подбираем ближайшего специалиста для вас. Обычно это занимает до 20 минут — мы пришлём уведомление, как только мастер примет заказ 🔧`,
+        );
+      }
     }
 
     this.eventsGateway.sendOrderUpdate(savedOrder);
@@ -150,25 +214,38 @@ export class OrderService {
       lockKey,
       String(telegramId),
       'PX',
-      10000,
+      30000,
       'NX',
     );
 
-    if (!lock) throw new ConflictException('Order already taken');
+    if (!lock) throw new ConflictException('Этот заказ уже кто-то берёт прямо сейчас');
 
     try {
       const order = await this.orderRepository.findOneBy({ id: orderId });
 
       if (!order || order.status !== OrderStatus.PAID) {
-        // Release lock if order is invalid
         await this.redis.del(lockKey);
-        throw new ConflictException('Order not available (must be PAID)');
+        throw new ConflictException('Заказ уже взят другим мастером');
       }
 
       order.status = OrderStatus.IN_PROGRESS;
       order.assignedSpecialistId = String(telegramId);
       order.startedAt = new Date();
       const savedOrder = await this.orderRepository.save(order);
+      
+      // Уведомление клиента о назначении мастера
+      const orderWithRelations = await this.orderRepository.findOne({
+        where: { id: savedOrder.id },
+        relations: ['client', 'assignedSpecialist'],
+      });
+      if (orderWithRelations?.client?.telegramId) {
+        const specName = orderWithRelations.assignedSpecialist?.name || 'Мастер';
+        await this.telegramService.sendMessage(
+          orderWithRelations.client.telegramId,
+          `👷 <b>Мастер найден!</b>\n\n${specName} взял ваш заказ и уже едет к вам. Чтобы узнать, где сейчас мастер, вы можете открыть мини-приложение и отследить его в реальном времени.`,
+        );
+      }
+
       this.eventsGateway.sendOrderUpdate(savedOrder);
       return savedOrder;
     } catch (error) {
@@ -215,7 +292,32 @@ export class OrderService {
     order.status = OrderStatus.COMPLETED;
     order.completedAt = new Date();
     const savedOrder = await this.orderRepository.save(order);
+    
+    // Уведомление клиента о завершении заказа
+    const orderWithClient = await this.orderRepository.findOne({
+      where: { id: savedOrder.id },
+      relations: ['client'],
+    });
+
+    if (orderWithClient?.client?.telegramId) {
+      await this.telegramService.sendOrderCompletedToClient(orderWithClient.client.telegramId);
+    }
+
     this.eventsGateway.sendOrderUpdate(savedOrder);
     return savedOrder;
+  }
+
+  async findActiveClientOrder(telegramId: string): Promise<Order | null> {
+    const client = await this.clientsService.findByTelegramId(telegramId);
+    if (!client) return null;
+
+    return this.orderRepository.findOne({
+      where: [
+        { clientId: client.id, status: OrderStatus.PAID },
+        { clientId: client.id, status: OrderStatus.IN_PROGRESS },
+      ],
+      relations: ['assignedSpecialist'],
+      order: { createdAt: 'DESC' },
+    });
   }
 }

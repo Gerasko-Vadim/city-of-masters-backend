@@ -15,6 +15,10 @@ import { QueueModule } from './queue/queue.module';
 import { BullModule } from '@nestjs/bull';
 import { EventsModule } from './events/events.module';
 import { ChatModule } from './chat/chat.module';
+import { ClientsModule } from './clients/clients.module';
+import { Client } from './clients/entities/client.entity';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
 
 @Module({
   imports: [
@@ -26,8 +30,8 @@ import { ChatModule } from './chat/chat.module';
       password: process.env.PGPASSWORD,
       database: process.env.PGDATABASE,
 
-      entities: [Order, Operator, Specialist, ChatMessage],
-      synchronize: true,
+      entities: [Order, Operator, Specialist, ChatMessage, Client],
+      synchronize: process.env.NODE_ENV !== 'production',
       ssl: { rejectUnauthorized: false },
     }),
     BullModule.forRootAsync({
@@ -48,6 +52,7 @@ import { ChatModule } from './chat/chat.module';
         };
       },
     }),
+    ThrottlerModule.forRoot([{ ttl: 60000, limit: 30 }]),
     OrderModule,
     OperatorsModule,
     AuthModule,
@@ -56,8 +61,12 @@ import { ChatModule } from './chat/chat.module';
     QueueModule,
     EventsModule,
     ChatModule,
+    ClientsModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
+  ],
 })
 export class AppModule {}

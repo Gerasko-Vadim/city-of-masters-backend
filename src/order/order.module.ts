@@ -6,6 +6,7 @@ import { ChatMessage } from './entities/chat-message.entity';
 import { OrderController } from './order.controller';
 import { SpecialistsModule } from 'src/specialists/specialists.module';
 import { TelegramModule } from 'src/telegram/telegram.module';
+import { ClientsModule } from 'src/clients/clients.module';
 import { BullModule } from '@nestjs/bull';
 import { redisProvider } from 'src/common/providers/redis.provider';
 
@@ -17,6 +18,7 @@ import { redisProvider } from 'src/common/providers/redis.provider';
     }),
     forwardRef(() => SpecialistsModule),
     forwardRef(() => TelegramModule),
+    ClientsModule,
   ],
   controllers: [OrderController],
   providers: [OrderService, redisProvider],

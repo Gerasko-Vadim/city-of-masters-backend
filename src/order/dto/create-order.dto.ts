@@ -5,6 +5,7 @@ import {
   IsDateString,
   Min,
 } from 'class-validator';
+import { Transform } from 'class-transformer';
 
 export class CreateOrderDto {
   @IsString()
@@ -37,4 +38,16 @@ export class CreateOrderDto {
 
   @IsNumber()
   lng: number;
+
+  @IsNumber()
+  @IsOptional()
+  clientId?: number;
+
+  @IsOptional()
+  @Transform(({ value }) => value ? String(value) : value)
+  telegramId?: string;
+
+  @IsString()
+  @IsOptional()
+  source?: string;
 }

@@ -13,16 +13,20 @@ export class TelegramProcessor {
 
   @Process('new-order')
   async handle(job: Job) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    console.log(`TelegramProcessor: handling new-order for order ${job.data.id}`);
     const { lat, lng } = job.data;
+    console.log(`Searching specialists near ${lat}, ${lng}`);
 
     const specialists = await this.specialistsService.findNearbySpecialists(
       lat,
       lng,
-      5,
+      10, // Increased radius to 10 for testing
     );
 
+    console.log(`Found ${specialists.length} nearby specialists`);
+
     for (const s of specialists) {
+      console.log(`Sending order to specialist ${s.telegramId}`);
       await this.telegramService.sendOrderToSpecialist(s.telegramId, job.data as Order);
     }
   }
