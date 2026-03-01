@@ -99,7 +99,10 @@ export class OrderService {
 
   // Получение одного заказа
   async findOne(id: number): Promise<Order> {
-    const order = await this.orderRepository.findOne({ where: { id } });
+    const order = await this.orderRepository.findOne({
+      where: { id },
+      relations: ['assignedSpecialist'],
+    });
     if (!order) {
       throw new NotFoundException(`Order with id ${id} not found`);
     }
