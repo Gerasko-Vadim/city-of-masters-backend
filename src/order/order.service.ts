@@ -10,6 +10,7 @@ import { Repository } from 'typeorm';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { Order, OrderStatus, OrderSource } from './entities/order.entity';
+import { OrderHistory } from './entities/order-history.entity';
 import { SpecialistsService } from 'src/specialists/specialists.service';
 import { ClientsService } from 'src/clients/clients.service';
 import { TelegramService } from 'src/telegram/telegram.service';
@@ -19,11 +20,20 @@ import type Redis from 'ioredis';
 import { REDIS_CLIENT } from 'src/common/providers/redis.provider';
 import { EventsGateway } from 'src/events/events.gateway';
 
+const statusLabel: Record<OrderStatus, string> = {
+  [OrderStatus.NEW]: 'Новый',
+  [OrderStatus.PAID]: 'Оплачен',
+  [OrderStatus.IN_PROGRESS]: 'В работе',
+  [OrderStatus.COMPLETED]: 'Завершён',
+};
+
 @Injectable()
 export class OrderService {
   constructor(
     @InjectRepository(Order)
     private orderRepository: Repository<Order>,
+    @InjectRepository(OrderHistory)
+    private historyRepository: Repository<OrderHistory>,
     @Inject(forwardRef(() => SpecialistsService))
     private readonly specialistsService: SpecialistsService,
     private readonly clientsService: ClientsService,
@@ -34,6 +44,14 @@ export class OrderService {
     private readonly telegramQueue: Queue,
     private readonly eventsGateway: EventsGateway,
   ) {}
+
+  private async addHistory(orderId: number, event: string) {
+    try {
+      await this.historyRepository.save({ orderId, event });
+    } catch (e) {
+      console.error('Failed to save order history', e);
+    }
+  }
 
   async create(dto: CreateOrderDto) {
     let clientId = dto.clientId;
@@ -46,10 +64,10 @@ export class OrderService {
       clientId = client.id;
     }
 
-    const orderData = { 
+    const orderData = {
       ...dto,
       source: (dto.source as OrderSource) || OrderSource.CLIENT,
-      commission: 500
+      commission: 500,
     };
     delete orderData.telegramId;
     if (clientId) {
@@ -58,6 +76,8 @@ export class OrderService {
 
     const order = await this.orderRepository.save(this.orderRepository.create(orderData));
     console.log(`Order ${order.id} created successfully`);
+
+    await this.addHistory(order.id, `Заказ создан (источник: ${order.source === OrderSource.ADMIN ? 'Администратор' : 'Клиент'})`);
 
     if (dto.telegramId) {
       try {
@@ -71,6 +91,7 @@ export class OrderService {
     }
 
     if (order.status === OrderStatus.PAID) {
+      await this.addHistory(order.id, 'Статус изменён: Новый → Оплачен');
       await this.telegramQueue.add('new-order', {
         id: order.id,
         lat: order.lat,
@@ -81,8 +102,7 @@ export class OrderService {
     }
 
     this.eventsGateway.sendOrderUpdate(order);
-    
-    // Notify admin panel about new order for sound alert
+
     this.eventsGateway.server.emit('admin_notification', {
       type: 'NEW_ORDER',
       orderId: order.id,
@@ -92,12 +112,10 @@ export class OrderService {
     return order;
   }
 
-  // Получение всех заказов
   async findAll(): Promise<Order[]> {
     return this.orderRepository.find();
   }
 
-  // Получение одного заказа
   async findOne(id: number): Promise<Order> {
     const order = await this.orderRepository.findOne({
       where: { id },
@@ -109,27 +127,118 @@ export class OrderService {
     return order;
   }
 
-  // Обновление заказа
+  async getHistory(orderId: number): Promise<OrderHistory[]> {
+    return this.historyRepository.find({
+      where: { orderId },
+      order: { createdAt: 'ASC' },
+    });
+  }
+
+  async updateNotifiedSpecialists(id: number, notifiedSpecialists: { telegramId: string; messageId: number }[]) {
+    await this.orderRepository.update(id, { notifiedSpecialists });
+  }
+
   async update(id: number, updateOrderDto: UpdateOrderDto): Promise<Order> {
     console.log(`Updating order ${id} with:`, updateOrderDto);
     const order = await this.findOne(id);
     const oldStatus = order.status;
 
-    Object.assign(order, updateOrderDto);
+    // Collect history events by comparing old vs new values
+    const historyEvents: string[] = [];
 
-    // Если статус меняется на PAID (даже если он был COMPLETED или IN_PROGRESS)
-    // Сбрасываем данные о мастере и времени, чтобы заказ стал "чистым" для нового поиска
-    if (updateOrderDto.status === OrderStatus.PAID && oldStatus !== OrderStatus.PAID) {
-      order.assignedSpecialistId = null;
-      order.startedAt = null;
-      order.completedAt = null;
-      // Также можно сбросить и другие поля, если нужно
+    if (updateOrderDto.status && updateOrderDto.status !== oldStatus) {
+      historyEvents.push(`Статус изменён: ${statusLabel[oldStatus]} → ${statusLabel[updateOrderDto.status]}`);
+    }
+    if (updateOrderDto.address !== undefined && updateOrderDto.address !== order.address) {
+      historyEvents.push(`Адрес изменён: "${order.address}" → "${updateOrderDto.address}"`);
+    }
+    if (updateOrderDto.totalAmount !== undefined && Number(updateOrderDto.totalAmount) !== Number(order.totalAmount)) {
+      historyEvents.push(`Сумма изменена: ${order.totalAmount} → ${updateOrderDto.totalAmount} сом`);
+    }
+    if (updateOrderDto.customerName !== undefined && updateOrderDto.customerName !== order.customerName) {
+      historyEvents.push(`Имя клиента: "${order.customerName}" → "${updateOrderDto.customerName}"`);
+    }
+    if (updateOrderDto.phone !== undefined && updateOrderDto.phone !== order.phone) {
+      historyEvents.push(`Телефон изменён: ${order.phone} → ${updateOrderDto.phone}`);
+    }
+    if (updateOrderDto.description !== undefined && updateOrderDto.description !== order.description) {
+      historyEvents.push('Описание обновлено');
+    }
+    if (
+      updateOrderDto.lat !== undefined &&
+      updateOrderDto.lng !== undefined &&
+      (Number(updateOrderDto.lat) !== Number(order.lat) || Number(updateOrderDto.lng) !== Number(order.lng))
+    ) {
+      historyEvents.push('Координаты обновлены');
     }
 
-    const savedOrder = await this.orderRepository.save(order);
-    console.log(`Order ${id} saved successfully with status ${savedOrder.status} (oldStatus: ${oldStatus})`);
+    // Build safe update object (avoid TypeORM relation-save issues)
+    const updates: Partial<Order> = {};
+    if (updateOrderDto.customerName !== undefined) updates.customerName = updateOrderDto.customerName;
+    if (updateOrderDto.phone !== undefined) updates.phone = updateOrderDto.phone;
+    if (updateOrderDto.address !== undefined) updates.address = updateOrderDto.address;
+    if (updateOrderDto.totalAmount !== undefined) updates.totalAmount = updateOrderDto.totalAmount;
+    if (updateOrderDto.commission !== undefined) updates.commission = updateOrderDto.commission;
+    if (updateOrderDto.description !== undefined) updates.description = updateOrderDto.description;
+    if (updateOrderDto.status !== undefined) updates.status = updateOrderDto.status;
+    if (updateOrderDto.lat !== undefined) updates.lat = updateOrderDto.lat;
+    if (updateOrderDto.lng !== undefined) updates.lng = updateOrderDto.lng;
 
-    // Если статус стал PAID, запускаем поиск исполнителей и уведомляем клиента
+    // Reset specialist data when reverting to PAID
+    if (updateOrderDto.status === OrderStatus.PAID && oldStatus !== OrderStatus.PAID) {
+      updates.assignedSpecialistId = null;
+      updates.startedAt = null;
+      updates.completedAt = null;
+    }
+
+    await this.orderRepository.update(id, updates);
+    const savedOrder = await this.findOne(id);
+
+    console.log(`Order ${id} saved successfully (oldStatus: ${oldStatus} → ${savedOrder.status})`);
+
+    // Save history
+    for (const event of historyEvents) {
+      await this.addHistory(id, event);
+    }
+
+    // If order was PAID and data fields changed → notify specialists who were notified
+    const dataChanged = historyEvents.some(e => !e.startsWith('Статус'));
+    if (oldStatus === OrderStatus.PAID && dataChanged) {
+      const msg =
+        `⚠️ <b>Заказ #${id} был изменён!</b>\n\n` +
+        `📍 Адрес: ${savedOrder.address}\n` +
+        `💰 Сумма: ${savedOrder.totalAmount} сом` +
+        (savedOrder.description ? `\n📝 ${savedOrder.description}` : '');
+
+      if (order.notifiedSpecialists && order.notifiedSpecialists.length > 0) {
+        // Notify specialists from the saved list
+        for (const ns of order.notifiedSpecialists) {
+          try {
+            await this.telegramService.sendToSpecialist(ns.telegramId, msg);
+          } catch (e) {
+            console.error(`Failed to notify specialist ${ns.telegramId} about order update`, e);
+          }
+        }
+      } else {
+        // Fallback: find and notify nearby specialists
+        try {
+          const nearby = await this.specialistsService.findNearbySpecialists(
+            savedOrder.lat,
+            savedOrder.lng,
+            10,
+          );
+          for (const s of nearby) {
+            try {
+              await this.telegramService.sendToSpecialist(s.telegramId, msg);
+            } catch {}
+          }
+        } catch (e) {
+          console.error('Failed to notify nearby specialists about order update', e);
+        }
+      }
+    }
+
+    // If status just became PAID → notify specialists via queue and notify client
     if (oldStatus !== OrderStatus.PAID && savedOrder.status === OrderStatus.PAID) {
       console.log(`Notification trigger activated for order ${savedOrder.id}`);
       await this.telegramQueue.add('new-order', {
@@ -140,7 +249,6 @@ export class OrderService {
         totalAmount: savedOrder.totalAmount,
       });
 
-      // Уведомление клиента
       const orderWithClient = await this.orderRepository.findOne({
         where: { id: savedOrder.id },
         relations: ['client'],
@@ -157,15 +265,13 @@ export class OrderService {
     return savedOrder;
   }
 
-  // Удаление заказа
   async remove(id: number): Promise<Order> {
     const order = await this.findOne(id);
     return this.orderRepository.remove(order);
   }
 
   async findNearbyOrders(telegramId: string | number, radiusKm = 5) {
-    const specialist =
-      await this.specialistsService.findByTelegramId(telegramId);
+    const specialist = await this.specialistsService.findByTelegramId(telegramId);
     if (!specialist || !specialist.lat || !specialist.lng) return [];
 
     return this.orderRepository
@@ -195,31 +301,9 @@ export class OrderService {
       .getMany();
   }
 
-  // async assign(orderId: number, telegramId: number) {
-  //   const specialist =
-  //     await this.specialistsService.findByTelegramId(telegramId);
-  //   const order = await this.orderRepository.findOneBy({ id: orderId });
-
-  //   if (!order) {
-  //     throw new NotFoundException('Order not found');
-  //   }
-
-  //   order.status = OrderStatus.IN_PROGRESS;
-  //   order.assignedSpecialist = specialist?.telegramId;
-
-  //   return this.orderRepository.save(order);
-  // }
-
   async assign(orderId: number, telegramId: number) {
     const lockKey = `order:lock:${orderId}`;
-    // Try to acquire lock with 10 second expiration
-    const lock = await this.redis.set(
-      lockKey,
-      String(telegramId),
-      'PX',
-      30000,
-      'NX',
-    );
+    const lock = await this.redis.set(lockKey, String(telegramId), 'PX', 30000, 'NX');
 
     if (!lock) throw new ConflictException('Этот заказ уже кто-то берёт прямо сейчас');
 
@@ -235,14 +319,16 @@ export class OrderService {
       order.assignedSpecialistId = String(telegramId);
       order.startedAt = new Date();
       const savedOrder = await this.orderRepository.save(order);
-      
-      // Уведомление клиента о назначении мастера
+
       const orderWithRelations = await this.orderRepository.findOne({
         where: { id: savedOrder.id },
         relations: ['client', 'assignedSpecialist'],
       });
+
+      const specName = orderWithRelations?.assignedSpecialist?.name || 'Мастер';
+      await this.addHistory(orderId, `Мастер принял заказ: ${specName}`);
+
       if (orderWithRelations?.client?.telegramId) {
-        const specName = orderWithRelations.assignedSpecialist?.name || 'Мастер';
         await this.telegramService.sendMessage(
           orderWithRelations.client.telegramId,
           `👷 <b>Мастер найден!</b>\n\n${specName} взял ваш заказ и уже едет к вам. Чтобы узнать, где сейчас мастер, вы можете открыть мини-приложение и отследить его в реальном времени.`,
@@ -252,17 +338,13 @@ export class OrderService {
       this.eventsGateway.sendOrderUpdate(savedOrder);
       return savedOrder;
     } catch (error) {
-      // Release lock on error
       await this.redis.del(lockKey);
       throw error;
     }
   }
 
   async notifySpecialist(telegramId: number, order: Order) {
-    await this.telegramQueue.add('send-order', {
-      telegramId,
-      order,
-    });
+    await this.telegramQueue.add('send-order', { telegramId, order });
   }
 
   async findActiveOrder(telegramId: string | number): Promise<Order | null> {
@@ -283,7 +365,7 @@ export class OrderService {
 
   async completeByBot(orderId: number, telegramId: number): Promise<Order> {
     const order = await this.findOne(orderId);
-    
+
     if (String(order.assignedSpecialistId) !== String(telegramId)) {
       throw new ConflictException('You are not assigned to this order');
     }
@@ -295,8 +377,9 @@ export class OrderService {
     order.status = OrderStatus.COMPLETED;
     order.completedAt = new Date();
     const savedOrder = await this.orderRepository.save(order);
-    
-    // Уведомление клиента о завершении заказа
+
+    await this.addHistory(orderId, 'Заказ завершён мастером');
+
     const orderWithClient = await this.orderRepository.findOne({
       where: { id: savedOrder.id },
       relations: ['client'],
