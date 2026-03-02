@@ -31,6 +31,10 @@ export class CreateOrderDto {
 
   @IsString()
   @IsOptional()
+  category?: string;
+
+  @IsString()
+  @IsOptional()
   description?: string;
 
   @IsNumber()
