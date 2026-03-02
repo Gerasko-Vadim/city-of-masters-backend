@@ -19,6 +19,12 @@ export class ChatController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Get('specialist/:specialistId')
+  async getSpecialistHistory(@Param('specialistId') specialistId: string) {
+    return this.chatService.getHistory(undefined, Number(specialistId));
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Get('client/:clientId')
   async getClientHistory(@Param('clientId') clientId: string) {
     return this.chatService.getHistory(undefined, undefined, Number(clientId));
