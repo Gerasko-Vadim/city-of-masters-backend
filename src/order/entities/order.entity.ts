@@ -55,6 +55,9 @@ export class Order {
   @Column({ type: 'timestamp', nullable: true })
   scheduledAt?: Date;
 
+  @Column({ type: 'varchar', nullable: true })
+  category?: string;
+
   @Column({ type: 'text', nullable: true })
   description?: string;
 
