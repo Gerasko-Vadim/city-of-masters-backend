@@ -1,14 +1,36 @@
-import { Controller, Get, Post, Body, Param, UseGuards, Request, Res } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, UseGuards, Request, Res, Query } from '@nestjs/common';
 import { ChatService } from './chat.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import type { Response } from 'express';
 import * as path from 'path';
 import * as fs from 'fs';
+import axios from 'axios';
 
 @Controller('chat')
 export class ChatController {
   constructor(private readonly chatService: ChatService) {}
 
+  // Proxy Telegram images server-side — avoids ephemeral filesystem issues on Railway.
+  // Must be declared BEFORE photo/:filename to avoid wildcard matching "tg" as filename.
+  @Get('photo/tg')
+  async proxyTelegramPhoto(@Query('path') filePath: string, @Res() res: Response) {
+    if (!filePath) {
+      return res.status(400).send('Missing path');
+    }
+    const token = process.env.CLIENT_BOT_TOKEN || process.env.BOT_TOKEN;
+    const telegramUrl = `https://api.telegram.org/file/bot${token}/${filePath}`;
+    try {
+      const response = await axios({ url: telegramUrl, responseType: 'stream', timeout: 10000 });
+      const contentType = response.headers['content-type'] || 'image/jpeg';
+      res.setHeader('Content-Type', contentType);
+      res.setHeader('Cache-Control', 'public, max-age=86400');
+      response.data.pipe(res);
+    } catch (err) {
+      res.status(404).send('Not found');
+    }
+  }
+
+  // Serve locally stored files (legacy — kept for backward compatibility)
   @Get('photo/:filename')
   servePhoto(@Param('filename') filename: string, @Res() res: Response) {
     const filePath = path.join(process.cwd(), 'uploads', 'chats', filename);
@@ -16,6 +38,12 @@ export class ChatController {
       return res.status(404).send('Not found');
     }
     res.sendFile(filePath);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('specialist/:specialistId')
+  async getSpecialistHistory(@Param('specialistId') specialistId: string) {
+    return this.chatService.getHistory(undefined, Number(specialistId));
   }
 
   @UseGuards(JwtAuthGuard)
@@ -36,7 +64,6 @@ export class ChatController {
     @Body() body: { orderId?: number; specialistId?: number; clientId?: number; text: string },
     @Request() req: any,
   ) {
-    // req.user has the operator info
     return this.chatService.sendFromOperator(
       body.text,
       body.orderId,

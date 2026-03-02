@@ -7,9 +7,6 @@ import { TelegramService } from '../telegram/telegram.service';
 import { Order } from '../order/entities/order.entity';
 import { Specialist } from '../specialists/entities/specialist.entity';
 import { Client } from '../clients/entities/client.entity';
-import * as fs from 'fs';
-import * as path from 'path';
-import * as crypto from 'crypto';
 import axios from 'axios';
 
 @Injectable()
@@ -232,24 +229,16 @@ export class ChatService {
     if (!imageUrl.includes('api.telegram.org')) {
       return imageUrl;
     }
+    // Extract the file_path from the Telegram URL and store as tg:{file_path}
+    // This avoids ephemeral filesystem issues on Railway — the proxy endpoint
+    // fetches from Telegram on-demand using the bot token stored server-side.
     try {
-      const filename = crypto.randomUUID() + '.jpg';
-      const uploadDir = path.join(process.cwd(), 'uploads', 'chats');
-      if (!fs.existsSync(uploadDir)) {
-        fs.mkdirSync(uploadDir, { recursive: true });
+      const match = imageUrl.match(/\/file\/bot[^/]+\/(.+)$/);
+      if (match) {
+        return `tg:${match[1]}`;
       }
-      const filepath = path.join(uploadDir, filename);
-
-      const response = await axios({
-        url: imageUrl,
-        responseType: 'arraybuffer',
-      });
-      fs.writeFileSync(filepath, response.data);
-
-      return `/chat/photo/${filename}`;
-    } catch (err) {
-      console.error('Failed to download image:', err);
-      return imageUrl;
-    }
+    } catch {}
+    // Fallback: return original URL if we can't parse it
+    return imageUrl;
   }
 }

@@ -31,6 +31,12 @@ export class OrderController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Get(':id/history')
+  getHistory(@Param('id', ParseIntPipe) id: number) {
+    return this.orderService.getHistory(id);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.orderService.findOne(id);

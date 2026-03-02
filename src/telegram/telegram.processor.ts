@@ -1,5 +1,7 @@
 import { Process, Processor } from '@nestjs/bull';
+import { forwardRef, Inject } from '@nestjs/common';
 import { Order } from 'src/order/entities/order.entity';
+import { OrderService } from 'src/order/order.service';
 import { SpecialistsService } from 'src/specialists/specialists.service';
 import { TelegramService } from './telegram.service';
 import { Job } from 'bullmq';
@@ -9,6 +11,8 @@ export class TelegramProcessor {
   constructor(
     private readonly specialistsService: SpecialistsService,
     private readonly telegramService: TelegramService,
+    @Inject(forwardRef(() => OrderService))
+    private readonly orderService: OrderService,
   ) {}
 
   @Process('new-order')
@@ -17,17 +21,29 @@ export class TelegramProcessor {
     const { lat, lng } = job.data;
     console.log(`Searching specialists near ${lat}, ${lng}`);
 
-    const specialists = await this.specialistsService.findNearbySpecialists(
-      lat,
-      lng,
-      10, // Increased radius to 10 for testing
-    );
+    const specialists = await this.specialistsService.findNearbySpecialists(lat, lng, 10);
 
     console.log(`Found ${specialists.length} nearby specialists`);
 
+    const notifiedSpecialists: { telegramId: string; messageId: number }[] = [];
+
     for (const s of specialists) {
       console.log(`Sending order to specialist ${s.telegramId}`);
-      await this.telegramService.sendOrderToSpecialist(s.telegramId, job.data as Order);
+      try {
+        const messageId = await this.telegramService.sendOrderToSpecialist(s.telegramId, job.data as Order);
+        notifiedSpecialists.push({ telegramId: String(s.telegramId), messageId });
+      } catch (e) {
+        console.error(`Failed to send order to specialist ${s.telegramId}`, e);
+      }
+    }
+
+    // Store notified specialists on the order for future reference (e.g., edit notifications)
+    if (notifiedSpecialists.length > 0) {
+      try {
+        await this.orderService.updateNotifiedSpecialists(job.data.id, notifiedSpecialists);
+      } catch (e) {
+        console.error('Failed to update notifiedSpecialists on order', e);
+      }
     }
   }
 }
