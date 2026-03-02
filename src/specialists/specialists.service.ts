@@ -30,8 +30,14 @@ export class SpecialistsService {
         'cm.specialistId = s.telegramId AND cm.isRead = false AND cm.senderType = :sender',
         { sender: 'SPECIALIST' }
       )
+      .leftJoin(
+        'order',
+        'o',
+        "o.assignedSpecialistId = s.telegramId AND o.status = 'IN_PROGRESS'"
+      )
       .select('s')
-      .addSelect('COUNT(cm.id)', 'unreadCount')
+      .addSelect('COUNT(DISTINCT cm.id)', 'unreadCount')
+      .addSelect('COUNT(DISTINCT o.id)', 'activeOrderCount')
       .groupBy('s.id')
       .orderBy('s.createdAt', 'DESC')
       .getRawAndEntities();
@@ -39,6 +45,7 @@ export class SpecialistsService {
     return raw.entities.map((specialist, index) => ({
       ...specialist,
       unreadCount: parseInt(raw.raw[index].unreadCount || '0', 10),
+      hasActiveOrder: parseInt(raw.raw[index].activeOrderCount || '0', 10) > 0,
     }));
   }
 
