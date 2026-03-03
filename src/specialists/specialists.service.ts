@@ -200,7 +200,10 @@ export class SpecialistsService {
     for (const spec of specialists) {
       if (spec.telegramId) {
         try {
-          await this.telegramService.sendToSpecialist(spec.telegramId, text);
+          await this.telegramService.sendToSpecialist(
+            spec.telegramId,
+            `📢 <b>Рассылка от оператора:</b>\n\n${text}`,
+          );
           sentCount++;
         } catch (error) {
           console.error(`Failed to send broadcast to ${spec.telegramId}:`, error.message);
