@@ -4,7 +4,7 @@ import { Order } from 'src/order/entities/order.entity';
 import { OrderService } from 'src/order/order.service';
 import { SpecialistsService } from 'src/specialists/specialists.service';
 import { TelegramService } from './telegram.service';
-import { Job } from 'bull';
+import type { Job } from 'bull';
 
 @Processor('orders')
 export class TelegramProcessor {
@@ -16,7 +16,7 @@ export class TelegramProcessor {
   ) {}
 
   @Process('new-order')
-  async handle(job: Job) {
+  async handle(job: Job<any>) {
     console.log(`TelegramProcessor: handling new-order for order ${job.data.id}`);
     const { lat, lng } = job.data;
     console.log(`Searching specialists near ${lat}, ${lng}`);
