@@ -267,6 +267,21 @@ export class OrderService {
       }
     }
 
+    // If status just became COMPLETED → notify client
+    if (oldStatus !== OrderStatus.COMPLETED && savedOrder.status === OrderStatus.COMPLETED) {
+      const orderWithClient = await this.orderRepository.findOne({
+        where: { id: savedOrder.id },
+        relations: ['client'],
+      });
+      if (orderWithClient?.client?.telegramId) {
+        try {
+          await this.telegramService.sendOrderCompletedToClient(orderWithClient.client.telegramId);
+        } catch (e) {
+          console.error(`Failed to send completion notification to client`, e);
+        }
+      }
+    }
+
     this.eventsGateway.sendOrderUpdate(savedOrder);
     return savedOrder;
   }

@@ -62,10 +62,20 @@ export class TelegramService {
   }
 
   async sendOrderCompletedToClient(telegramId: string | number) {
+    const miniAppUrl = process.env.CLIENT_MINI_APP_URL;
     await clientBot.telegram.sendMessage(
       telegramId as any,
       `🎉 <b>Готово! Ваш заказ выполнен.</b>\n\nСпасибо, что доверились нам — это очень важно для нас ❤️\n\nПомните: какая бы задача ни возникла дома — мы уже здесь. <b>Город Мастеров</b> всегда рядом с вами 🏠\n\nОтличного настроения и до новых встреч! 👋`,
-      { parse_mode: 'HTML' },
+      {
+        parse_mode: 'HTML',
+        ...(miniAppUrl ? {
+          reply_markup: {
+            inline_keyboard: [[
+              { text: '🔧 Заказать снова', web_app: { url: miniAppUrl } },
+            ]],
+          },
+        } : {}),
+      },
     );
   }
 
