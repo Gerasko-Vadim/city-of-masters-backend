@@ -19,6 +19,7 @@ import { ClientsModule } from './clients/clients.module';
 import { Client } from './clients/entities/client.entity';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
+import { PaymentModule } from './payment/payment.module';
 
 @Module({
   imports: [
@@ -62,6 +63,7 @@ import { APP_GUARD } from '@nestjs/core';
     EventsModule,
     ChatModule,
     ClientsModule,
+    PaymentModule,
   ],
   controllers: [AppController],
   providers: [
