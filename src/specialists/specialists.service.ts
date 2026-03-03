@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Specialist } from './entities/specialist.entity';
 import { UpdateLocationDto } from './dto/update-location.dto';
+import { UpdateSpecialistDto } from './dto/update-specialist.dto';
 import { RegisterTelegramDto } from './dto/register-telegram.dto';
 import { EventsGateway } from 'src/events/events.gateway';
 import { TelegramService } from 'src/telegram/telegram.service';
@@ -140,6 +141,15 @@ export class SpecialistsService {
     // specialist.lat = null;
     // specialist.lng = null;
 
+    const saved = await this.repo.save(specialist);
+    this.eventsGateway.sendSpecialistUpdate(saved);
+    return saved;
+  }
+
+  async update(id: number, dto: UpdateSpecialistDto) {
+    const specialist = await this.repo.findOneBy({ id });
+    if (!specialist) throw new NotFoundException('Specialist not found');
+    Object.assign(specialist, dto);
     const saved = await this.repo.save(specialist);
     this.eventsGateway.sendSpecialistUpdate(saved);
     return saved;

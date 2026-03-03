@@ -23,6 +23,12 @@ export class Specialist {
   @Column({ nullable: true })
   username: string;
 
+  @Column({ nullable: true })
+  fullName: string;
+
+  @Column({ nullable: true })
+  phone: string;
+
   @Column({ default: false })
   isOnShift: boolean;
 
