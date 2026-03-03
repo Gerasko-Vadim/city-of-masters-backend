@@ -18,24 +18,36 @@ if (!process.env.CLIENT_BOT_TOKEN) {
 @Injectable()
 export class TelegramService {
   async sendOrderToSpecialist(telegramId: string | number, order: Order) {
+    const maskedPhone = order.phone
+      ? order.phone.slice(0, -3) + '***'
+      : '';
+    const amount = Number(order.totalAmount).toLocaleString('ru-RU');
+    const categoryLine = order.category ? `🔧 ${order.category}\n` : '';
+    const descLine = order.description ? `📋 ${order.description}\n` : '';
+    const phoneLine = maskedPhone ? `📞 ${maskedPhone}\n` : '';
+
+    const text =
+      `⚡️ <b>Новый заказ рядом!</b>\n` +
+      `─────────────────\n` +
+      `${categoryLine}` +
+      `📍 ${order.address}\n` +
+      `💰 ${amount} сом\n` +
+      `${descLine}` +
+      `${phoneLine}` +
+      `─────────────────\n` +
+      `Нажмите кнопку, чтобы принять:`;
+
     const msg = await specialistBot.telegram.sendMessage(
       telegramId as any,
-      `🆕 Новый заказ рядом!
-      
-📍 ${order.address}
-💰 ${order.totalAmount} сом
-
-Нажмите кнопку, чтобы принять:`,
+      text,
       {
+        parse_mode: 'HTML',
         reply_markup: {
           inline_keyboard: [
             [
-              {
-                text: '✅ Принять заказ',
-                callback_data: `accept_${order.id}`,
-              },
+              { text: '✅ Принять', callback_data: `accept_${order.id}` },
+              { text: '❌ Пропустить', callback_data: `skip_${order.id}` },
             ],
-            [{ text: '❌ Пропустить', callback_data: `skip_${order.id}` }],
           ],
         },
       },

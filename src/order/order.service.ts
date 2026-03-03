@@ -98,6 +98,9 @@ export class OrderService {
         lng: order.lng,
         address: order.address,
         totalAmount: order.totalAmount,
+        description: order.description,
+        category: order.category,
+        phone: order.phone,
       });
     }
 
@@ -247,6 +250,9 @@ export class OrderService {
         lng: savedOrder.lng,
         address: savedOrder.address,
         totalAmount: savedOrder.totalAmount,
+        description: savedOrder.description,
+        category: savedOrder.category,
+        phone: savedOrder.phone,
       });
 
       const orderWithClient = await this.orderRepository.findOne({

@@ -30,7 +30,7 @@ export class TelegramProcessor {
     for (const s of specialists) {
       console.log(`Sending order to specialist ${s.telegramId}`);
       try {
-        const messageId = await this.telegramService.sendOrderToSpecialist(s.telegramId, job.data as Order);
+        const messageId = await this.telegramService.sendOrderToSpecialist(s.telegramId, job.data as unknown as Order);
         notifiedSpecialists.push({ telegramId: String(s.telegramId), messageId });
       } catch (e) {
         console.error(`Failed to send order to specialist ${s.telegramId}`, e);
