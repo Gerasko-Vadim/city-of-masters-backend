@@ -4,7 +4,7 @@ import { Order } from 'src/order/entities/order.entity';
 import { OrderService } from 'src/order/order.service';
 import { SpecialistsService } from 'src/specialists/specialists.service';
 import { TelegramService } from './telegram.service';
-import { Job } from 'bullmq';
+import { Job } from 'bull';
 
 @Processor('orders')
 export class TelegramProcessor {
@@ -37,7 +37,6 @@ export class TelegramProcessor {
       }
     }
 
-    // Store notified specialists on the order for future reference (e.g., edit notifications)
     if (notifiedSpecialists.length > 0) {
       try {
         await this.orderService.updateNotifiedSpecialists(job.data.id, notifiedSpecialists);

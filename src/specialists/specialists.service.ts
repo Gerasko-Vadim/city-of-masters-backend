@@ -112,6 +112,7 @@ export class SpecialistsService {
     return this.repo
       .createQueryBuilder('s')
       .where('s.isOnShift = true')
+      .andWhere('s.isBanned = false')
       .andWhere('s.lat IS NOT NULL AND s.lng IS NOT NULL')
       .andWhere(
         `
@@ -122,6 +123,14 @@ export class SpecialistsService {
       ) < :radius
     `,
         { lat, lng, radius: radiusKm },
+      )
+      .andWhere(
+        `s."telegramId"::text NOT IN (
+          SELECT "assignedSpecialistId"::text
+          FROM "order"
+          WHERE status = 'IN_PROGRESS'
+          AND "assignedSpecialistId" IS NOT NULL
+        )`,
       )
       .getMany();
   }

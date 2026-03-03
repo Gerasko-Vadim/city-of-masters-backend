@@ -23,7 +23,8 @@ export class TelegramService {
       : '';
     const amount = Number(order.totalAmount).toLocaleString('ru-RU');
     const categoryLine = order.category ? `🔧 ${order.category}\n` : '';
-    const descLine = order.description ? `📋 ${order.description}\n` : '';
+    const desc = order.description?.replace(/Тип помощи:/g, 'Описание:') ?? '';
+    const descLine = desc ? `📋 ${desc}\n` : '';
     const phoneLine = maskedPhone ? `📞 ${maskedPhone}\n` : '';
 
     const text =
