@@ -61,10 +61,12 @@ export class PaymentService {
   ): string {
     const host = new URL(process.env.FINIK_BASE_URL!).host;
     const sortedBody = JSON.stringify(this.sortKeys(body));
+    // Headers joined with & per Finik docs
+    const headersStr = `host:${host}&x-api-key:${apiKey}&x-api-timestamp:${timestamp}`;
     const canonical = [
       method.toLowerCase(),
       path,
-      `host:${host}\nx-api-key:${apiKey}\nx-api-timestamp:${timestamp}`,
+      headersStr,
       '',
       sortedBody,
     ].join('\n');
@@ -72,8 +74,6 @@ export class PaymentService {
     this.logger.log(`=== CANONICAL ===\n${canonical}\n=== END ===`);
 
     const pemKey = privateKeyPem.replace(/\\n/g, '\n');
-    this.logger.log(`PEM starts: ${pemKey.substring(0, 50)}`);
-
     const sign = crypto.createSign('RSA-SHA256');
     sign.update(canonical);
     sign.end();
@@ -127,7 +127,7 @@ export class PaymentService {
 
     const now = new Date();
     const endDate = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-    const timestamp = Math.floor(now.getTime() / 1000).toString();
+    const timestamp = now.getTime().toString(); // Unix milliseconds per Finik docs
 
     const body = {
       Amount: Math.round(dto.totalAmount * 100),
@@ -154,23 +154,30 @@ export class PaymentService {
 
     const response = await fetch(`${baseUrl}${path}`, {
       method: 'POST',
+      redirect: 'manual', // Finik returns 302, read Location header
       headers: {
         'Content-Type': 'application/json',
         'x-api-key': apiKey,
         'x-api-timestamp': timestamp,
-        'x-signature': signature,
+        'signature': signature, // per Finik docs (not x-signature)
       },
       body: sortedBodyStr,
     });
 
-    if (!response.ok) {
+    this.logger.log(`Finik response status: ${response.status}`);
+    this.logger.log(`Finik Location: ${response.headers.get('location') ?? 'none'}`);
+
+    // Finik returns 302 redirect — paymentUrl is in Location header
+    const paymentUrl: string =
+      response.headers.get('location') ??
+      response.headers.get('Location') ??
+      '';
+
+    if (!paymentUrl) {
       const text = await response.text();
       this.logger.error(`Finik API error for order ${order.id}: ${response.status} ${text}`);
       throw new Error(`Finik payment initiation failed: ${response.status}`);
     }
-
-    const data = (await response.json()) as any;
-    const paymentUrl: string = data.paymentUrl ?? data.PaymentUrl ?? data.url ?? data.redirectUrl;
     this.logger.log(`Finik paymentUrl for order ${order.id}: ${paymentUrl}`);
 
     this.eventsGateway.sendOrderUpdate(order);
