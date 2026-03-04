@@ -18,21 +18,34 @@ if (!process.env.CLIENT_BOT_TOKEN) {
 @Injectable()
 export class TelegramService {
   async sendOrderToSpecialist(telegramId: string | number, order: Order) {
-    const maskedPhone = order.phone
-      ? order.phone.slice(0, -3) + '***'
-      : '';
-    const amount = Number(order.totalAmount).toLocaleString('ru-RU');
-    const categoryLine = order.category ? `🔧 ${order.category}\n` : '';
-    const desc = order.description?.replace(/Тип помощи:/g, 'Описание:') ?? '';
-    const descLine = desc ? `📋 ${desc}\n` : '';
+    const maskedPhone = order.phone ? order.phone.slice(0, -3) + '***' : '';
+
+    // Extract upper price bound from "Стоимость: 400–600 сом" → "600 сом"
+    const priceMatch = order.description?.match(/Стоимость:\s*(.+)/);
+    let priceDisplay = '';
+    if (priceMatch) {
+      const numbers = priceMatch[1].match(/\d+/g);
+      priceDisplay = numbers?.length ? `${numbers[numbers.length - 1]} сом` : priceMatch[1].trim();
+    }
+
+    // Description without the Стоимость line
+    const desc = (order.description ?? '')
+      .split('\n')
+      .filter(line => !line.startsWith('Стоимость:'))
+      .join('\n')
+      .trim();
+
+    const typeLine = order.category ? `🔧 Тип работы: ${order.category}\n` : '';
+    const priceLine = priceDisplay ? `💰 Стоимость от: ${priceDisplay}\n` : '';
+    const descLine = desc ? `📋 Описание: ${desc}\n` : '';
     const phoneLine = maskedPhone ? `📞 ${maskedPhone}\n` : '';
 
     const text =
       `⚡️ <b>Новый заказ рядом!</b>\n` +
       `─────────────────\n` +
-      `${categoryLine}` +
+      `${typeLine}` +
       `📍 ${order.address}\n` +
-      `💰 ${amount} сом\n` +
+      `${priceLine}` +
       `${descLine}` +
       `${phoneLine}` +
       `─────────────────\n` +
