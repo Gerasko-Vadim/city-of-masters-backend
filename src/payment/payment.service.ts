@@ -156,6 +156,12 @@ export class PaymentService {
     throw new Error(`Finik payment initiation failed: ${res.status} ${text}`);
   }
 
+  async getOrderStatus(id: number): Promise<{ id: number; status: string }> {
+    const order = await this.orderRepository.findOne({ where: { id } });
+    if (!order) throw new Error(`Order ${id} not found`);
+    return { id: order.id, status: order.status };
+  }
+
   async handleWebhook(body: any): Promise<void> {
     this.logger.log(`Finik webhook body: ${JSON.stringify(body)}`);
 

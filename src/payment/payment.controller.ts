@@ -1,4 +1,4 @@
-import { Controller, Post, Body, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Post, Get, Param, ParseIntPipe, Body, HttpCode, HttpStatus } from '@nestjs/common';
 import { PaymentService } from './payment.service';
 
 @Controller('payment')
@@ -27,5 +27,11 @@ export class PaymentController {
   @HttpCode(HttpStatus.OK)
   handleWebhook(@Body() body: any) {
     return this.paymentService.handleWebhook(body);
+  }
+
+  // Public — used by mini-app to poll order status without JWT
+  @Get('order/:id/status')
+  getOrderStatus(@Param('id', ParseIntPipe) id: number) {
+    return this.paymentService.getOrderStatus(id);
   }
 }
