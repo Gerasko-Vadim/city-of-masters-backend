@@ -120,7 +120,7 @@ export class PaymentService {
 
     const now = new Date();
     const endDate = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-    const timestamp = now.toISOString();
+    const timestamp = Math.floor(now.getTime() / 1000).toString();
 
     const body = {
       Amount: Math.round(dto.totalAmount * 100),
