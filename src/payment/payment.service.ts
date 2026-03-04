@@ -160,9 +160,9 @@ export class PaymentService {
     this.logger.log(`Finik webhook body: ${JSON.stringify(body)}`);
 
     // Per Finik docs: webhook contains transactionId and status
-    const status: string = body.status;
-    if (status !== 'SUCCEEDED') {
-      this.logger.warn(`Finik webhook status is not SUCCEEDED: ${status}`);
+    const status: string = (body.status ?? '').toLowerCase();
+    if (status !== 'succeeded') {
+      this.logger.warn(`Finik webhook status is not succeeded: ${body.status}`);
       return;
     }
 
