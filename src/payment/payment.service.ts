@@ -157,11 +157,14 @@ export class PaymentService {
   }
 
   async handleWebhook(body: any): Promise<void> {
+    this.logger.log(`Finik webhook body: ${JSON.stringify(body)}`);
+
     const paymentId: string = body.paymentId ?? body.PaymentId;
     if (!paymentId) {
       this.logger.warn('Finik webhook received without paymentId');
       return;
     }
+    this.logger.log(`Looking for order with finikPaymentId: ${paymentId}`);
 
     const order = await this.orderRepository.findOne({
       where: { finikPaymentId: paymentId },
