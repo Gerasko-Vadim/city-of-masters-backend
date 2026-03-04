@@ -146,7 +146,11 @@ export class PaymentService {
     };
 
     const path = '/v1/payment';
-    const signature = this.signRequest('POST', path, body, apiKey, timestamp, privateKey);
+    const sortedBody = this.sortKeys(body);
+    const sortedBodyStr = JSON.stringify(sortedBody);
+    const signature = this.signRequest('POST', path, sortedBody, apiKey, timestamp, privateKey);
+
+    this.logger.log(`Sending body: ${sortedBodyStr}`);
 
     const response = await fetch(`${baseUrl}${path}`, {
       method: 'POST',
@@ -156,7 +160,7 @@ export class PaymentService {
         'x-api-timestamp': timestamp,
         'x-signature': signature,
       },
-      body: JSON.stringify(body),
+      body: sortedBodyStr,
     });
 
     if (!response.ok) {
