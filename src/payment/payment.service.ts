@@ -5,6 +5,7 @@ import { InjectQueue } from '@nestjs/bull';
 import type { Queue } from 'bull';
 import * as crypto from 'crypto';
 import { Signer } from '@mancho.devs/authorizer';
+import type { RequestData } from '@mancho.devs/authorizer/dist/types';
 import { Order, OrderStatus, OrderSource } from '../order/entities/order.entity';
 import { ClientsService } from '../clients/clients.service';
 import { TelegramService } from '../telegram/telegram.service';
@@ -72,19 +73,18 @@ export class PaymentService {
     );
     this.logger.log(`Order ${order.id} created with Finik paymentId ${paymentId}`);
 
+    // Credentials
+    const baseUrl = process.env.FINIK_BASE_URL!;
     const apiKey = process.env.FINIK_API_KEY!;
     const privateKey = process.env.FINIK_PRIVATE_KEY!.replace(/\\n/g, '\n');
-    const baseUrl = process.env.FINIK_BASE_URL!;
+    const accountId = process.env.FINIK_ACCOUNT_ID!;
     const webhookUrl = process.env.FINIK_WEBHOOK_URL!;
     const redirectUrl = process.env.FINIK_REDIRECT_URL!;
-    const accountId = process.env.FINIK_ACCOUNT_ID!;
 
-    const now = new Date();
-    const endDate = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-    const timestamp = now.getTime().toString();
     const host = new URL(baseUrl).host;
-    const path = '/v1/payment';
+    const timestamp = Date.now().toString(); // UNIX ms
 
+    const now = Date.now();
     const body = {
       Amount: Math.round(dto.totalAmount * 100),
       CardType: 'FINIK_QR',
@@ -96,17 +96,14 @@ export class PaymentService {
         name_en: 'City of Masters',
         webhookUrl: `${webhookUrl}/payment/webhook`,
         description: 'Комиссия за услугу',
-        startDate: now.getTime(),
-        endDate: endDate.getTime(),
+        startDate: now,
+        endDate: now + 24 * 60 * 60 * 1000,
       },
     };
 
-    const bodyStr = JSON.stringify(body);
-    this.logger.log(`Sending body: ${bodyStr}`);
-
-    const requestData = {
+    const requestData: RequestData = {
       httpMethod: 'POST',
-      path,
+      path: '/v1/payment',
       headers: {
         Host: host,
         'x-api-key': apiKey,
@@ -116,44 +113,47 @@ export class PaymentService {
       body,
     };
 
+    this.logger.log(`Request body: ${JSON.stringify(body)}`);
+
     const signature = await new Signer(requestData).sign(privateKey);
     this.logger.log(`Signature[:40]: ${signature.substring(0, 40)}`);
 
-    const response = await fetch(`${baseUrl}${path}`, {
-      method: 'POST',
-      redirect: 'manual',
+    const url = `${baseUrl}${requestData.path}`;
+    const res = await fetch(url, {
+      method: requestData.httpMethod,
       headers: {
-        'Content-Type': 'application/json',
+        'content-type': 'application/json',
         'x-api-key': apiKey,
         'x-api-timestamp': timestamp,
-        'signature': signature,
+        signature,
       },
-      body: bodyStr,
+      body: JSON.stringify(body),
+      redirect: 'manual',
     });
 
-    this.logger.log(`Finik response status: ${response.status}`);
-    this.logger.log(`Finik Location: ${response.headers.get('location') ?? 'none'}`);
+    this.logger.log(`Finik response status: ${res.status}`);
+    this.logger.log(`Finik Location: ${res.headers.get('location') ?? 'none'}`);
 
-    const paymentUrl: string =
-      response.headers.get('location') ??
-      response.headers.get('Location') ??
-      '';
+    if (res.status === 302) {
+      const paymentUrl = res.headers.get('location') ?? '';
+      if (!paymentUrl) {
+        throw new Error('Finik returned 302 but no Location header');
+      }
+      this.logger.log(`Finik paymentUrl for order ${order.id}: ${paymentUrl}`);
 
-    if (!paymentUrl) {
-      const text = await response.text();
-      this.logger.error(`Finik API error for order ${order.id}: ${response.status} ${text}`);
-      throw new Error(`Finik payment initiation failed: ${response.status}`);
+      this.eventsGateway.sendOrderUpdate(order);
+      this.eventsGateway.server.emit('admin_notification', {
+        type: 'NEW_ORDER',
+        orderId: order.id,
+        customerName: order.customerName,
+      });
+
+      return { orderId: order.id, paymentUrl };
     }
-    this.logger.log(`Finik paymentUrl for order ${order.id}: ${paymentUrl}`);
 
-    this.eventsGateway.sendOrderUpdate(order);
-    this.eventsGateway.server.emit('admin_notification', {
-      type: 'NEW_ORDER',
-      orderId: order.id,
-      customerName: order.customerName,
-    });
-
-    return { orderId: order.id, paymentUrl };
+    const text = await res.text();
+    this.logger.error(`Finik API error for order ${order.id}: ${res.status} ${text}`);
+    throw new Error(`Finik payment initiation failed: ${res.status} ${text}`);
   }
 
   async handleWebhook(body: any): Promise<void> {
