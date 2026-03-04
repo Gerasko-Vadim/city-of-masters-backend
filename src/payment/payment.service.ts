@@ -96,8 +96,8 @@ export class PaymentService {
         name_en: 'City of Masters',
         webhookUrl: `${webhookUrl}/payment/webhook`,
         description: 'Комиссия за услугу',
-        startDate: now.toISOString(),
-        endDate: endDate.toISOString(),
+        startDate: now.getTime(),
+        endDate: endDate.getTime(),
       },
     };
 
