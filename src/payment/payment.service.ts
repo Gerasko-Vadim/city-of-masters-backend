@@ -86,14 +86,14 @@ export class PaymentService {
 
     const now = Date.now();
     const body = {
-      Amount: Math.round(dto.totalAmount * 100),
+      Amount: Math.round(dto.totalAmount),
       CardType: 'FINIK_QR',
       PaymentId: paymentId,
       RedirectUrl: redirectUrl,
       Data: {
         accountId,
         merchantCategoryCode: '7299',
-        name_en: 'City of Masters',
+        name_en: 'Город Мастеров',
         webhookUrl: `${webhookUrl}/payment/webhook`,
         description: 'Комиссия за услугу',
         startDate: now,
