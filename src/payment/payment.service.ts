@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { InjectQueue } from '@nestjs/bull';
 import type { Queue } from 'bull';
 import * as crypto from 'crypto';
+import { Signer } from '@mancho.devs/authorizer';
 import { Order, OrderStatus, OrderSource } from '../order/entities/order.entity';
 import { ClientsService } from '../clients/clients.service';
 import { TelegramService } from '../telegram/telegram.service';
@@ -34,53 +35,6 @@ export class PaymentService {
     private readonly telegramQueue: Queue,
     private readonly eventsGateway: EventsGateway,
   ) {}
-
-  private sortKeys(obj: any): any {
-    if (Array.isArray(obj)) return obj.map((v) => this.sortKeys(v));
-    if (obj !== null && typeof obj === 'object') {
-      return Object.keys(obj)
-        .sort()
-        .reduce(
-          (acc, k) => {
-            acc[k] = this.sortKeys(obj[k]);
-            return acc;
-          },
-          {} as Record<string, any>,
-        );
-    }
-    return obj;
-  }
-
-  private signRequest(
-    method: string,
-    path: string,
-    body: any,
-    apiKey: string,
-    timestamp: string,
-    privateKeyPem: string,
-  ): string {
-    const host = new URL(process.env.FINIK_BASE_URL!).host;
-    const sortedBody = JSON.stringify(this.sortKeys(body));
-    // Headers joined with & per Finik docs
-    const headersStr = `host:${host}&x-api-key:${apiKey}&x-api-timestamp:${timestamp}`;
-    const canonical = [
-      method.toLowerCase(),
-      path,
-      headersStr,
-      '',
-      sortedBody,
-    ].join('\n');
-
-    this.logger.log(`=== CANONICAL ===\n${canonical}\n=== END ===`);
-
-    const pemKey = privateKeyPem.replace(/\\n/g, '\n');
-    const sign = crypto.createSign('RSA-SHA256');
-    sign.update(canonical);
-    sign.end();
-    const signature = sign.sign(pemKey, 'base64');
-    this.logger.log(`Signature[:40]: ${signature.substring(0, 40)}`);
-    return signature;
-  }
 
   async initiatePayment(
     dto: InitiatePaymentDto,
@@ -119,7 +73,7 @@ export class PaymentService {
     this.logger.log(`Order ${order.id} created with Finik paymentId ${paymentId}`);
 
     const apiKey = process.env.FINIK_API_KEY!;
-    const privateKey = process.env.FINIK_PRIVATE_KEY!;
+    const privateKey = process.env.FINIK_PRIVATE_KEY!.replace(/\\n/g, '\n');
     const baseUrl = process.env.FINIK_BASE_URL!;
     const webhookUrl = process.env.FINIK_WEBHOOK_URL!;
     const redirectUrl = process.env.FINIK_REDIRECT_URL!;
@@ -127,7 +81,9 @@ export class PaymentService {
 
     const now = new Date();
     const endDate = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-    const timestamp = now.getTime().toString(); // Unix milliseconds per Finik docs
+    const timestamp = now.getTime().toString();
+    const host = new URL(baseUrl).host;
+    const path = '/v1/payment';
 
     const body = {
       Amount: Math.round(dto.totalAmount * 100),
@@ -145,29 +101,39 @@ export class PaymentService {
       },
     };
 
-    const path = '/v1/payment';
-    const sortedBody = this.sortKeys(body);
-    const sortedBodyStr = JSON.stringify(sortedBody);
-    const signature = this.signRequest('POST', path, sortedBody, apiKey, timestamp, privateKey);
+    const bodyStr = JSON.stringify(body);
+    this.logger.log(`Sending body: ${bodyStr}`);
 
-    this.logger.log(`Sending body: ${sortedBodyStr}`);
+    const requestData = {
+      httpMethod: 'POST',
+      path,
+      headers: {
+        Host: host,
+        'x-api-key': apiKey,
+        'x-api-timestamp': timestamp,
+      },
+      queryStringParameters: undefined,
+      body,
+    };
+
+    const signature = await new Signer(requestData).sign(privateKey);
+    this.logger.log(`Signature[:40]: ${signature.substring(0, 40)}`);
 
     const response = await fetch(`${baseUrl}${path}`, {
       method: 'POST',
-      redirect: 'manual', // Finik returns 302, read Location header
+      redirect: 'manual',
       headers: {
         'Content-Type': 'application/json',
         'x-api-key': apiKey,
         'x-api-timestamp': timestamp,
-        'signature': signature, // per Finik docs (not x-signature)
+        'signature': signature,
       },
-      body: sortedBodyStr,
+      body: bodyStr,
     });
 
     this.logger.log(`Finik response status: ${response.status}`);
     this.logger.log(`Finik Location: ${response.headers.get('location') ?? 'none'}`);
 
-    // Finik returns 302 redirect — paymentUrl is in Location header
     const paymentUrl: string =
       response.headers.get('location') ??
       response.headers.get('Location') ??
