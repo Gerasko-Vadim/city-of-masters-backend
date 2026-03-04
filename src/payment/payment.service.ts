@@ -159,9 +159,21 @@ export class PaymentService {
   async handleWebhook(body: any): Promise<void> {
     this.logger.log(`Finik webhook body: ${JSON.stringify(body)}`);
 
-    const paymentId: string = body.paymentId ?? body.PaymentId;
+    // Per Finik docs: webhook contains transactionId and status
+    const status: string = body.status;
+    if (status !== 'SUCCEEDED') {
+      this.logger.warn(`Finik webhook status is not SUCCEEDED: ${status}`);
+      return;
+    }
+
+    // transactionId in webhook = PaymentId we sent when creating payment
+    const paymentId: string =
+      body.transactionId ??
+      body.PaymentId ??
+      body.paymentId;
+
     if (!paymentId) {
-      this.logger.warn('Finik webhook received without paymentId');
+      this.logger.warn(`Finik webhook: no transactionId in body`);
       return;
     }
     this.logger.log(`Looking for order with finikPaymentId: ${paymentId}`);
