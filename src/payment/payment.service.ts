@@ -69,10 +69,17 @@ export class PaymentService {
       sortedBody,
     ].join('\n');
 
+    this.logger.debug(`=== CANONICAL STRING ===\n${canonical}\n=== END ===`);
+
+    const pemKey = privateKeyPem.replace(/\\n/g, '\n');
+    this.logger.debug(`PEM key starts with: ${pemKey.substring(0, 40)}`);
+
     const sign = crypto.createSign('RSA-SHA256');
     sign.update(canonical);
     sign.end();
-    return sign.sign(privateKeyPem.replace(/\\n/g, '\n'), 'base64');
+    const signature = sign.sign(pemKey, 'base64');
+    this.logger.debug(`Signature (first 40): ${signature.substring(0, 40)}`);
+    return signature;
   }
 
   async initiatePayment(
