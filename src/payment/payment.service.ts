@@ -112,7 +112,7 @@ export class PaymentService {
         'x-api-key': apiKey,
         'x-api-timestamp': timestamp,
       },
-      queryStringParameters: undefined,
+      queryStringParameters: null,
       body,
     };
 
