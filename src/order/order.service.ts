@@ -98,6 +98,9 @@ export class OrderService {
         lng: order.lng,
         address: order.address,
         totalAmount: order.totalAmount,
+        description: order.description,
+        category: order.category,
+        phone: order.phone,
       });
     }
 
@@ -247,6 +250,9 @@ export class OrderService {
         lng: savedOrder.lng,
         address: savedOrder.address,
         totalAmount: savedOrder.totalAmount,
+        description: savedOrder.description,
+        category: savedOrder.category,
+        phone: savedOrder.phone,
       });
 
       const orderWithClient = await this.orderRepository.findOne({
@@ -258,6 +264,21 @@ export class OrderService {
           orderWithClient.client.telegramId,
           `✅ <b>Оплата подтверждена — ищем мастера!</b>\n\nМы уже подбираем ближайшего специалиста для вас. Обычно это занимает до 20 минут — мы пришлём уведомление, как только мастер примет заказ 🔧`,
         );
+      }
+    }
+
+    // If status just became COMPLETED → notify client
+    if (oldStatus !== OrderStatus.COMPLETED && savedOrder.status === OrderStatus.COMPLETED) {
+      const orderWithClient = await this.orderRepository.findOne({
+        where: { id: savedOrder.id },
+        relations: ['client'],
+      });
+      if (orderWithClient?.client?.telegramId) {
+        try {
+          await this.telegramService.sendOrderCompletedToClient(orderWithClient.client.telegramId);
+        } catch (e) {
+          console.error(`Failed to send completion notification to client`, e);
+        }
       }
     }
 
@@ -347,6 +368,26 @@ export class OrderService {
     await this.telegramQueue.add('send-order', { telegramId, order });
   }
 
+  async pushOrderToNearbySpecialists(order: Order): Promise<void> {
+    console.log(`[PUSH] Finding specialists near ${order.lat}, ${order.lng} for order ${order.id}`);
+    const specialists = await this.specialistsService.findNearbySpecialists(order.lat, order.lng, 10);
+    console.log(`[PUSH] Found ${specialists.length} specialists`);
+
+    const notified: { telegramId: string; messageId: number }[] = [];
+    for (const s of specialists) {
+      try {
+        const messageId = await this.telegramService.sendOrderToSpecialist(s.telegramId, order);
+        notified.push({ telegramId: String(s.telegramId), messageId });
+        console.log(`[PUSH] Sent to specialist ${s.telegramId}`);
+      } catch (e) {
+        console.error(`[PUSH] Failed to send to specialist ${s.telegramId}:`, e);
+      }
+    }
+    if (notified.length > 0) {
+      await this.updateNotifiedSpecialists(order.id, notified);
+    }
+  }
+
   async findActiveOrder(telegramId: string | number): Promise<Order | null> {
     return this.orderRepository.findOne({
       where: {
@@ -386,7 +427,11 @@ export class OrderService {
     });
 
     if (orderWithClient?.client?.telegramId) {
-      await this.telegramService.sendOrderCompletedToClient(orderWithClient.client.telegramId);
+      try {
+        await this.telegramService.sendOrderCompletedToClient(orderWithClient.client.telegramId);
+      } catch (e) {
+        console.error(`Failed to send completion notification to client ${orderWithClient.client.telegramId}`, e);
+      }
     }
 
     this.eventsGateway.sendOrderUpdate(savedOrder);

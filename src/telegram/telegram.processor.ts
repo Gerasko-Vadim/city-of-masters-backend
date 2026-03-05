@@ -4,7 +4,7 @@ import { Order } from 'src/order/entities/order.entity';
 import { OrderService } from 'src/order/order.service';
 import { SpecialistsService } from 'src/specialists/specialists.service';
 import { TelegramService } from './telegram.service';
-import { Job } from 'bullmq';
+import type { Job } from 'bull';
 
 @Processor('orders')
 export class TelegramProcessor {
@@ -16,7 +16,7 @@ export class TelegramProcessor {
   ) {}
 
   @Process('new-order')
-  async handle(job: Job) {
+  async handle(job: Job<any>) {
     console.log(`TelegramProcessor: handling new-order for order ${job.data.id}`);
     const { lat, lng } = job.data;
     console.log(`Searching specialists near ${lat}, ${lng}`);
@@ -30,14 +30,13 @@ export class TelegramProcessor {
     for (const s of specialists) {
       console.log(`Sending order to specialist ${s.telegramId}`);
       try {
-        const messageId = await this.telegramService.sendOrderToSpecialist(s.telegramId, job.data as Order);
+        const messageId = await this.telegramService.sendOrderToSpecialist(s.telegramId, job.data as unknown as Order);
         notifiedSpecialists.push({ telegramId: String(s.telegramId), messageId });
       } catch (e) {
         console.error(`Failed to send order to specialist ${s.telegramId}`, e);
       }
     }
 
-    // Store notified specialists on the order for future reference (e.g., edit notifications)
     if (notifiedSpecialists.length > 0) {
       try {
         await this.orderService.updateNotifiedSpecialists(job.data.id, notifiedSpecialists);

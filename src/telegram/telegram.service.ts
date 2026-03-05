@@ -18,24 +18,50 @@ if (!process.env.CLIENT_BOT_TOKEN) {
 @Injectable()
 export class TelegramService {
   async sendOrderToSpecialist(telegramId: string | number, order: Order) {
+    const maskedPhone = order.phone ? order.phone.slice(0, -3) + '***' : '';
+
+    // Extract upper price bound from "Стоимость: 400–600 сом" → "600 сом"
+    const priceMatch = order.description?.match(/Стоимость:\s*(.+)/);
+    let priceDisplay = '';
+    if (priceMatch) {
+      const numbers = priceMatch[1].match(/\d+/g);
+      priceDisplay = numbers?.length ? `${numbers[numbers.length - 1]} сом` : priceMatch[1].trim();
+    }
+
+    // Description without the Стоимость line
+    const desc = (order.description ?? '')
+      .split('\n')
+      .filter(line => !line.startsWith('Стоимость:'))
+      .join('\n')
+      .trim();
+
+    const typeLine = order.category ? `🔧 Тип работы: ${order.category}\n` : '';
+    const priceLine = priceDisplay ? `💰 Стоимость от: ${priceDisplay}\n` : '';
+    const descLine = desc ? `📋 Описание: ${desc}\n` : '';
+    const phoneLine = maskedPhone ? `📞 ${maskedPhone}\n` : '';
+
+    const text =
+      `⚡️ <b>Новый заказ рядом!</b>\n` +
+      `─────────────────\n` +
+      `${typeLine}` +
+      `📍 ${order.address}\n` +
+      `${priceLine}` +
+      `${descLine}` +
+      `${phoneLine}` +
+      `─────────────────\n` +
+      `Нажмите кнопку, чтобы принять:`;
+
     const msg = await specialistBot.telegram.sendMessage(
       telegramId as any,
-      `🆕 Новый заказ рядом!
-      
-📍 ${order.address}
-💰 ${order.totalAmount} сом
-
-Нажмите кнопку, чтобы принять:`,
+      text,
       {
+        parse_mode: 'HTML',
         reply_markup: {
           inline_keyboard: [
             [
-              {
-                text: '✅ Принять заказ',
-                callback_data: `accept_${order.id}`,
-              },
+              { text: '✅ Принять', callback_data: `accept_${order.id}` },
+              { text: '❌ Пропустить', callback_data: `skip_${order.id}` },
             ],
-            [{ text: '❌ Пропустить', callback_data: `skip_${order.id}` }],
           ],
         },
       },
@@ -49,16 +75,19 @@ export class TelegramService {
   }
 
   async sendOrderCompletedToClient(telegramId: string | number) {
+    const miniAppUrl = process.env.CLIENT_MINI_APP_URL;
     await clientBot.telegram.sendMessage(
       telegramId as any,
-      `✅ <b>Заказ выполнен!</b>\n\nБлагодарим, что выбрали Город Мастеров — надеемся, мастер оправдал ваши ожидания 😊\n\nПрекрасного настроения и хорошего дня! <b>Город Мастеров</b> всегда рядом 🏠`,
+      `🎉 <b>Готово! Ваш заказ выполнен.</b>\n\nСпасибо, что доверились нам — это очень важно для нас ❤️\n\nПомните: какая бы задача ни возникла дома — мы уже здесь. <b>Город Мастеров</b> всегда рядом с вами 🏠\n\nОтличного настроения и до новых встреч! 👋`,
       {
         parse_mode: 'HTML',
-        reply_markup: {
-          inline_keyboard: [[
-            { text: '🔧 Заказать снова', web_app: { url: process.env.CLIENT_MINI_APP_URL! } },
-          ]],
-        },
+        ...(miniAppUrl ? {
+          reply_markup: {
+            inline_keyboard: [[
+              { text: '🔧 Заказать снова', web_app: { url: miniAppUrl } },
+            ]],
+          },
+        } : {}),
       },
     );
   }

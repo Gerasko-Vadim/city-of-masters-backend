@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Specialist } from './entities/specialist.entity';
 import { UpdateLocationDto } from './dto/update-location.dto';
+import { UpdateSpecialistDto } from './dto/update-specialist.dto';
 import { RegisterTelegramDto } from './dto/register-telegram.dto';
 import { EventsGateway } from 'src/events/events.gateway';
 import { TelegramService } from 'src/telegram/telegram.service';
@@ -111,6 +112,7 @@ export class SpecialistsService {
     return this.repo
       .createQueryBuilder('s')
       .where('s.isOnShift = true')
+      .andWhere('s.isBanned = false')
       .andWhere('s.lat IS NOT NULL AND s.lng IS NOT NULL')
       .andWhere(
         `
@@ -121,6 +123,14 @@ export class SpecialistsService {
       ) < :radius
     `,
         { lat, lng, radius: radiusKm },
+      )
+      .andWhere(
+        `s."telegramId"::text NOT IN (
+          SELECT "assignedSpecialistId"::text
+          FROM "order"
+          WHERE status = 'IN_PROGRESS'
+          AND "assignedSpecialistId" IS NOT NULL
+        )`,
       )
       .getMany();
   }
@@ -140,6 +150,15 @@ export class SpecialistsService {
     // specialist.lat = null;
     // specialist.lng = null;
 
+    const saved = await this.repo.save(specialist);
+    this.eventsGateway.sendSpecialistUpdate(saved);
+    return saved;
+  }
+
+  async update(id: number, dto: UpdateSpecialistDto) {
+    const specialist = await this.repo.findOneBy({ id });
+    if (!specialist) throw new NotFoundException('Specialist not found');
+    Object.assign(specialist, dto);
     const saved = await this.repo.save(specialist);
     this.eventsGateway.sendSpecialistUpdate(saved);
     return saved;
@@ -181,7 +200,10 @@ export class SpecialistsService {
     for (const spec of specialists) {
       if (spec.telegramId) {
         try {
-          await this.telegramService.sendToSpecialist(spec.telegramId, text);
+          await this.telegramService.sendToSpecialist(
+            spec.telegramId,
+            `📢 <b>Рассылка от оператора:</b>\n\n${text}`,
+          );
           sentCount++;
         } catch (error) {
           console.error(`Failed to send broadcast to ${spec.telegramId}:`, error.message);

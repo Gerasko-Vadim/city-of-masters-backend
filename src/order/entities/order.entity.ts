@@ -95,4 +95,7 @@ export class Order {
 
   @Column('jsonb', { default: [] })
   notifiedSpecialists: { telegramId: string; messageId: number }[];
+
+  @Column({ type: 'varchar', nullable: true })
+  finikPaymentId?: string;
 }

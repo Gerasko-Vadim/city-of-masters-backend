@@ -125,10 +125,14 @@ export class ChatService {
     }
 
     if (telegramId) {
-      await this.telegramService.sendMessage(
-        telegramId as any,
-        `💬 <b>Сообщение от оператора:</b>\n\n${text}`,
-      );
+      const header = `💬 <b>Сообщение от оператора:</b>\n\n${text}`;
+      if (resolvedTelegramId) {
+        // Sending to specialist — use specialist bot
+        await this.telegramService.sendToSpecialist(telegramId as any, header);
+      } else {
+        // Sending to client — use client bot
+        await this.telegramService.sendMessage(telegramId as any, header);
+      }
     }
 
     return message;

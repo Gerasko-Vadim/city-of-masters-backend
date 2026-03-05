@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Post, Patch, Query, Param, ParseIntPipe, NotFoundException } from '@nestjs/common';
 import { SpecialistsService } from './specialists.service';
 import { OrderService } from 'src/order/order.service';
+import { UpdateSpecialistDto } from './dto/update-specialist.dto';
 
 @Controller('specialists')
 export class SpecialistsController {
@@ -66,6 +67,11 @@ export class SpecialistsController {
     const orders = await this.orderService.findBySpecialist(specialist.telegramId);
     const activeOrder = await this.orderService.findActiveOrder(specialist.telegramId);
     return { ...specialist, orders, activeOrder };
+  }
+
+  @Patch(':id')
+  async update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateSpecialistDto) {
+    return this.specialistsService.update(id, dto);
   }
 
   @Patch(':id/ban')
