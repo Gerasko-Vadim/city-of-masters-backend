@@ -79,6 +79,14 @@ export class SpecialistsController {
     return this.specialistsService.setBan(id, isBanned);
   }
   
+  // Public — called from master mini-app (no JWT)
+  @Patch('register-profile')
+  async registerProfile(
+    @Body() body: { telegramId: string; fullName: string; phone: string },
+  ) {
+    return this.specialistsService.registerProfile(body.telegramId, body.fullName, body.phone);
+  }
+
   @Post('broadcast')
   async broadcast(@Body('text') text: string, @Body('filter') filter: 'ALL' | 'ON_SHIFT' | 'OFF_SHIFT') {
     return this.specialistsService.broadcast(text, filter);

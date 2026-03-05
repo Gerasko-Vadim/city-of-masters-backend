@@ -1,5 +1,6 @@
 import {
   ConflictException,
+  ForbiddenException,
   forwardRef,
   Inject,
   Injectable,
@@ -323,6 +324,12 @@ export class OrderService {
   }
 
   async assign(orderId: number, telegramId: number) {
+    // Check specialist is registered (has fullName)
+    const specialist = await this.specialistsService.findByTelegramId(telegramId);
+    if (!specialist?.fullName) {
+      throw new ForbiddenException('NOT_REGISTERED');
+    }
+
     const lockKey = `order:lock:${orderId}`;
     const lock = await this.redis.set(lockKey, String(telegramId), 'PX', 30000, 'NX');
 
