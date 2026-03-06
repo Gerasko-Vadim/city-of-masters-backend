@@ -37,6 +37,18 @@ export class ClientsController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Get('broadcast-auto-text')
+  getAutoText() {
+    return this.clientsService.getAutoText();
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('broadcast-auto-text')
+  setAutoText(@Body() body: { text: string }) {
+    return this.clientsService.setAutoText(body.text);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Get(':id')
   async findOne(@Param('id', ParseIntPipe) id: number) {
     return this.clientsService.findOne(id);

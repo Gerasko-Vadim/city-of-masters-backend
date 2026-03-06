@@ -18,6 +18,10 @@ export class ClientsService implements OnModuleInit {
   private broadcastEnabled = true;
   private lastSentAt: Date | null = null;
   private broadcastTimer: ReturnType<typeof setTimeout> | null = null;
+  private autoText =
+    `👋 Привет! На связи команда <b>Город Мастеров</b> 🏠\n\n` +
+    `Мы заботимся о вас и хотим убедиться, что всё в порядке.\n\n` +
+    `Нужна ли вам помощь мастера? Мы готовы помочь в любой момент!`;
 
   onModuleInit() {
     this.scheduleNextBroadcast();
@@ -54,12 +58,12 @@ export class ClientsService implements OnModuleInit {
     }, delay);
   }
 
+  getAutoText() { return { text: this.autoText }; }
+  setAutoText(text: string) { this.autoText = text; return { text: this.autoText }; }
+
   async sendWeeklyBroadcast(customText?: string) {
     const clients = await this.clientRepository.find({ select: ['telegramId'] });
-    const text = customText ||
-      `👋 Привет! На связи команда <b>Город Мастеров</b> 🏠\n\n` +
-      `Мы заботимся о вас и хотим убедиться, что всё в порядке.\n\n` +
-      `Нужна ли вам помощь мастера? Мы готовы помочь в любой момент!`;
+    const text = customText || this.autoText;
 
     let sent = 0;
     for (const client of clients) {
