@@ -80,6 +80,22 @@ export class SpecialistsController {
   }
   
   // Public — called from master mini-app (no JWT)
+  @Get('my-stats')
+  async getMyStats(@Query('telegramId') telegramId: string) {
+    const specialist = await this.specialistsService.findByTelegramId(telegramId as any);
+    if (!specialist) return { fullName: null, phone: null, completedOrders: 0, activeOrder: null };
+    const orders = await this.orderService.findBySpecialist(telegramId);
+    const completedOrders = orders.filter(o => o.status === 'COMPLETED').length;
+    const activeOrder = await this.orderService.findActiveOrder(telegramId as any);
+    return {
+      fullName: specialist.fullName,
+      phone: specialist.phone,
+      isOnShift: specialist.isOnShift,
+      completedOrders,
+      activeOrder: activeOrder ?? null,
+    };
+  }
+
   @Patch('register-profile')
   async registerProfile(
     @Body() body: { telegramId: string; fullName: string; phone: string },
