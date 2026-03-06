@@ -58,6 +58,31 @@ export class SpecialistsController {
     return this.specialistsService.findAll();
   }
 
+  // Public — called from master mini-app (no JWT)
+  // Must be BEFORE @Get(':id') and @Patch(':id') to avoid route conflict
+  @Get('my-stats')
+  async getMyStats(@Query('telegramId') telegramId: string) {
+    const specialist = await this.specialistsService.findByTelegramId(telegramId as any);
+    if (!specialist) return { fullName: null, phone: null, completedOrders: 0, activeOrder: null };
+    const orders = await this.orderService.findBySpecialist(telegramId);
+    const completedOrders = orders.filter(o => o.status === 'COMPLETED').length;
+    const activeOrder = await this.orderService.findActiveOrder(telegramId as any);
+    return {
+      fullName: specialist.fullName,
+      phone: specialist.phone,
+      isOnShift: specialist.isOnShift,
+      completedOrders,
+      activeOrder: activeOrder ?? null,
+    };
+  }
+
+  @Patch('register-profile')
+  async registerProfile(
+    @Body() body: { telegramId: string; fullName: string; phone: string },
+  ) {
+    return this.specialistsService.registerProfile(body.telegramId, body.fullName, body.phone);
+  }
+
   @Get(':id')
   async getOne(@Param('id', ParseIntPipe) id: number) {
     const specialist = await this.specialistsService.findOneById(id);
@@ -78,7 +103,7 @@ export class SpecialistsController {
   async ban(@Param('id', ParseIntPipe) id: number, @Body('isBanned') isBanned: boolean) {
     return this.specialistsService.setBan(id, isBanned);
   }
-  
+
   @Post('broadcast')
   async broadcast(@Body('text') text: string, @Body('filter') filter: 'ALL' | 'ON_SHIFT' | 'OFF_SHIFT') {
     return this.specialistsService.broadcast(text, filter);

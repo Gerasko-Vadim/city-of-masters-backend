@@ -213,5 +213,15 @@ export class SpecialistsService {
 
     return { sentCount, total: specialists.length };
   }
+
+  async registerProfile(telegramId: string, fullName: string, phone: string) {
+    let specialist = await this.repo.findOneBy({ telegramId: telegramId as any });
+    if (!specialist) {
+      specialist = this.repo.create({ telegramId: telegramId as any });
+    }
+    specialist.fullName = fullName;
+    specialist.phone = phone;
+    return this.repo.save(specialist);
+  }
 }
 
