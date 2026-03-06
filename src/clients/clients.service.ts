@@ -22,7 +22,8 @@ export class ClientsService implements OnModuleInit {
   private autoText =
     `👋 Привет! На связи команда <b>Город Мастеров</b> 🏠\n\n` +
     `Мы заботимся о вас и хотим убедиться, что всё в порядке.\n\n` +
-    `Нужна ли вам помощь мастера? Мы готовы помочь в любой момент!`;
+    `Нужна ли вам помощь мастера? Создайте заявку и оплатите прямо в Telegram — быстро и удобно! 🔧`;
+  private autoButtonVisible = true;
 
   onModuleInit() {
     this.scheduleNextBroadcast();
@@ -54,15 +55,19 @@ export class ClientsService implements OnModuleInit {
     const delay = next.getTime() - Date.now();
 
     this.broadcastTimer = setTimeout(async () => {
-      if (this.broadcastEnabled) await this.sendWeeklyBroadcast();
+      if (this.broadcastEnabled) await this.sendWeeklyBroadcast(undefined, this.autoButtonVisible);
       this.scheduleNextBroadcast();
     }, delay);
   }
 
-  getAutoText() { return { text: this.autoText }; }
-  setAutoText(text: string) { this.autoText = text; return { text: this.autoText }; }
+  getAutoText() { return { text: this.autoText, buttonVisible: this.autoButtonVisible }; }
+  setAutoText(text: string, buttonVisible: boolean) {
+    this.autoText = text;
+    this.autoButtonVisible = buttonVisible;
+    return this.getAutoText();
+  }
 
-  async sendWeeklyBroadcast(customText?: string) {
+  async sendWeeklyBroadcast(customText?: string, buttonVisible = true) {
     const clients = await this.clientRepository.find({ select: ['telegramId'] });
     const text = customText || this.autoText;
 
@@ -71,9 +76,11 @@ export class ClientsService implements OnModuleInit {
       try {
         await clientBot.telegram.sendMessage(client.telegramId as any, text, {
           parse_mode: 'HTML',
-          reply_markup: {
-            inline_keyboard: [[{ text: '🔧 Заказать мастера', url: MINI_APP_URL }]],
-          },
+          ...(buttonVisible ? {
+            reply_markup: {
+              inline_keyboard: [[{ text: '📲 Заказать мастера', url: MINI_APP_URL }]],
+            },
+          } : {}),
         });
         sent++;
       } catch { /* user may have blocked bot */ }
