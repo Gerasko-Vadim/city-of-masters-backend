@@ -18,6 +18,7 @@ export class ClientsService implements OnModuleInit {
   private broadcastEnabled = true;
   private lastSentAt: Date | null = null;
   private broadcastTimer: ReturnType<typeof setTimeout> | null = null;
+  private scheduledBroadcasts = new Map<string, { text: string; scheduledAt: Date; timer: ReturnType<typeof setTimeout> }>();
   private autoText =
     `👋 Привет! На связи команда <b>Город Мастеров</b> 🏠\n\n` +
     `Мы заботимся о вас и хотим убедиться, что всё в порядке.\n\n` +
@@ -99,6 +100,34 @@ export class ClientsService implements OnModuleInit {
       this.broadcastTimer = null;
     }
     return this.getBroadcastStatus();
+  }
+
+  // ── Scheduled broadcasts ───────────────────────────────────────────────────
+
+  scheduleCustomBroadcast(text: string, scheduledAt: Date) {
+    const delay = scheduledAt.getTime() - Date.now();
+    if (delay <= 0) throw new Error('Дата должна быть в будущем');
+    const id = Date.now().toString(36) + Math.random().toString(36).slice(2);
+    const timer = setTimeout(async () => {
+      await this.sendWeeklyBroadcast(text);
+      this.scheduledBroadcasts.delete(id);
+    }, delay);
+    this.scheduledBroadcasts.set(id, { text, scheduledAt, timer });
+    return { id, scheduledAt: scheduledAt.toISOString(), text };
+  }
+
+  getScheduledBroadcasts() {
+    return Array.from(this.scheduledBroadcasts.entries()).map(([id, s]) => ({
+      id,
+      text: s.text,
+      scheduledAt: s.scheduledAt.toISOString(),
+    }));
+  }
+
+  cancelScheduledBroadcast(id: string) {
+    const s = this.scheduledBroadcasts.get(id);
+    if (s) { clearTimeout(s.timer); this.scheduledBroadcasts.delete(id); }
+    return { ok: true };
   }
 
   // ── Existing methods ───────────────────────────────────────────────────────

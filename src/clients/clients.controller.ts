@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get, Param, ParseIntPipe, UseGuards } from '@nestjs/common';
+import { Controller, Post, Body, Get, Param, ParseIntPipe, UseGuards, Delete, BadRequestException } from '@nestjs/common';
 import { ClientsService } from './clients.service';
 import { RegisterClientDto } from './dto/register-client.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -46,6 +46,28 @@ export class ClientsController {
   @Post('broadcast-auto-text')
   setAutoText(@Body() body: { text: string }) {
     return this.clientsService.setAutoText(body.text);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('broadcast-schedule')
+  scheduleBroadcast(@Body() body: { text: string; scheduledAt: string }) {
+    try {
+      return this.clientsService.scheduleCustomBroadcast(body.text, new Date(body.scheduledAt));
+    } catch (e: any) {
+      throw new BadRequestException(e.message);
+    }
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('broadcast-scheduled')
+  getScheduled() {
+    return this.clientsService.getScheduledBroadcasts();
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete('broadcast-scheduled/:id')
+  cancelScheduled(@Param('id') id: string) {
+    return this.clientsService.cancelScheduledBroadcast(id);
   }
 
   @UseGuards(JwtAuthGuard)
