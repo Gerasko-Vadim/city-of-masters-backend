@@ -58,28 +58,8 @@ export class SpecialistsController {
     return this.specialistsService.findAll();
   }
 
-  @Get(':id')
-  async getOne(@Param('id', ParseIntPipe) id: number) {
-    const specialist = await this.specialistsService.findOneById(id);
-    if (!specialist) {
-      throw new NotFoundException('Specialist not found');
-    }
-    const orders = await this.orderService.findBySpecialist(specialist.telegramId);
-    const activeOrder = await this.orderService.findActiveOrder(specialist.telegramId);
-    return { ...specialist, orders, activeOrder };
-  }
-
-  @Patch(':id')
-  async update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateSpecialistDto) {
-    return this.specialistsService.update(id, dto);
-  }
-
-  @Patch(':id/ban')
-  async ban(@Param('id', ParseIntPipe) id: number, @Body('isBanned') isBanned: boolean) {
-    return this.specialistsService.setBan(id, isBanned);
-  }
-  
   // Public — called from master mini-app (no JWT)
+  // Must be BEFORE @Get(':id') and @Patch(':id') to avoid route conflict
   @Get('my-stats')
   async getMyStats(@Query('telegramId') telegramId: string) {
     const specialist = await this.specialistsService.findByTelegramId(telegramId as any);
@@ -101,6 +81,27 @@ export class SpecialistsController {
     @Body() body: { telegramId: string; fullName: string; phone: string },
   ) {
     return this.specialistsService.registerProfile(body.telegramId, body.fullName, body.phone);
+  }
+
+  @Get(':id')
+  async getOne(@Param('id', ParseIntPipe) id: number) {
+    const specialist = await this.specialistsService.findOneById(id);
+    if (!specialist) {
+      throw new NotFoundException('Specialist not found');
+    }
+    const orders = await this.orderService.findBySpecialist(specialist.telegramId);
+    const activeOrder = await this.orderService.findActiveOrder(specialist.telegramId);
+    return { ...specialist, orders, activeOrder };
+  }
+
+  @Patch(':id')
+  async update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateSpecialistDto) {
+    return this.specialistsService.update(id, dto);
+  }
+
+  @Patch(':id/ban')
+  async ban(@Param('id', ParseIntPipe) id: number, @Body('isBanned') isBanned: boolean) {
+    return this.specialistsService.setBan(id, isBanned);
   }
 
   @Post('broadcast')
