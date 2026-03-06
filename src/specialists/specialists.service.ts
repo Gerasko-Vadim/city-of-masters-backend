@@ -221,7 +221,9 @@ export class SpecialistsService {
     }
     specialist.fullName = fullName;
     specialist.phone = phone;
-    return this.repo.save(specialist);
+    const saved = await this.repo.save(specialist);
+    this.eventsGateway.sendSpecialistUpdate({ ...saved, _event: 'registered' });
+    return saved;
   }
 }
 
