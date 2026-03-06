@@ -7,6 +7,7 @@ import { OperatorsModule } from './operators/operators.module';
 import { AuthModule } from './auth/auth.module';
 import { Order } from './order/entities/order.entity';
 import { ChatMessage } from './order/entities/chat-message.entity';
+import { OrderHistory } from './order/entities/order-history.entity';
 import { Operator } from './operators/entities/operator.entity';
 import { SpecialistsModule } from './specialists/specialists.module';
 import { Specialist } from './specialists/entities/specialist.entity';
@@ -31,7 +32,8 @@ import { PaymentModule } from './payment/payment.module';
       username: process.env.PGUSER,
       password: process.env.PGPASSWORD,
       database: process.env.PGDATABASE,
-      entities: [Order, Operator, Specialist, ChatMessage, Client],
+      entities: [Order, OrderHistory, Operator, Specialist, ChatMessage, Client],
+      autoLoadEntities: true,
       synchronize: true,
       ssl: { rejectUnauthorized: false },
     }),
