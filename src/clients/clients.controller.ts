@@ -19,6 +19,24 @@ export class ClientsController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Get('broadcast-status')
+  getBroadcastStatus() {
+    return this.clientsService.getBroadcastStatus();
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('broadcast-toggle')
+  toggleBroadcast() {
+    return this.clientsService.toggleBroadcast();
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('broadcast-now')
+  broadcastNow() {
+    return this.clientsService.sendWeeklyBroadcast();
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Get(':id')
   async findOne(@Param('id', ParseIntPipe) id: number) {
     return this.clientsService.findOne(id);

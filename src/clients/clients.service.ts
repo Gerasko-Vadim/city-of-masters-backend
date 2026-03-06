@@ -1,15 +1,103 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Client } from './entities/client.entity';
 import { RegisterClientDto } from './dto/register-client.dto';
+import { clientBot } from 'src/telegram/telegram.service';
+
+const MINI_APP_URL = process.env.CLIENT_MINI_APP_URL || 'https://t.me/city_of_masters_client_bot';
 
 @Injectable()
-export class ClientsService {
+export class ClientsService implements OnModuleInit {
   constructor(
     @InjectRepository(Client)
     private readonly clientRepository: Repository<Client>,
   ) {}
+
+  // ── Weekly broadcast state ─────────────────────────────────────────────────
+  private broadcastEnabled = true;
+  private lastSentAt: Date | null = null;
+  private broadcastTimer: ReturnType<typeof setTimeout> | null = null;
+
+  onModuleInit() {
+    this.scheduleNextBroadcast();
+  }
+
+  getNextBroadcastAt(): Date {
+    const BSK = 6 * 60 * 60 * 1000;
+    const now = new Date();
+    const bskNow = new Date(now.getTime() + BSK);
+    const dow = bskNow.getUTCDay(); // 0=Sun 1=Mon
+    const bskHour = bskNow.getUTCHours();
+
+    // If today is Monday and before 10:00 BSK → next broadcast is today
+    const daysUntil = (dow === 1 && bskHour < 10) ? 0 : (1 + 7 - dow) % 7 || 7;
+
+    return new Date(Date.UTC(
+      bskNow.getUTCFullYear(),
+      bskNow.getUTCMonth(),
+      bskNow.getUTCDate() + daysUntil,
+      10 - 6, 0, 0, // 10:00 BSK = 04:00 UTC
+    ));
+  }
+
+  private scheduleNextBroadcast() {
+    if (this.broadcastTimer) clearTimeout(this.broadcastTimer);
+    if (!this.broadcastEnabled) return;
+
+    const next = this.getNextBroadcastAt();
+    const delay = next.getTime() - Date.now();
+
+    this.broadcastTimer = setTimeout(async () => {
+      if (this.broadcastEnabled) await this.sendWeeklyBroadcast();
+      this.scheduleNextBroadcast();
+    }, delay);
+  }
+
+  async sendWeeklyBroadcast() {
+    const clients = await this.clientRepository.find({ select: ['telegramId'] });
+    const text =
+      `👋 Привет! На связи команда <b>Город Мастеров</b> 🏠\n\n` +
+      `Мы заботимся о вас и хотим убедиться, что всё в порядке.\n\n` +
+      `Нужна ли вам помощь мастера? Мы готовы помочь в любой момент!`;
+
+    let sent = 0;
+    for (const client of clients) {
+      try {
+        await clientBot.telegram.sendMessage(client.telegramId as any, text, {
+          parse_mode: 'HTML',
+          reply_markup: {
+            inline_keyboard: [[{ text: '🔧 Заказать мастера', url: MINI_APP_URL }]],
+          },
+        });
+        sent++;
+      } catch { /* user may have blocked bot */ }
+    }
+    this.lastSentAt = new Date();
+    console.log(`Weekly client broadcast sent to ${sent}/${clients.length}`);
+    return { sent, total: clients.length };
+  }
+
+  getBroadcastStatus() {
+    return {
+      enabled: this.broadcastEnabled,
+      nextAt: this.getNextBroadcastAt().toISOString(),
+      lastSentAt: this.lastSentAt?.toISOString() ?? null,
+    };
+  }
+
+  toggleBroadcast() {
+    this.broadcastEnabled = !this.broadcastEnabled;
+    if (this.broadcastEnabled) {
+      this.scheduleNextBroadcast();
+    } else if (this.broadcastTimer) {
+      clearTimeout(this.broadcastTimer);
+      this.broadcastTimer = null;
+    }
+    return this.getBroadcastStatus();
+  }
+
+  // ── Existing methods ───────────────────────────────────────────────────────
 
   async findByTelegramId(telegramId: string) {
     return this.clientRepository.findOne({ where: { telegramId } });
@@ -28,18 +116,12 @@ export class ClientsService {
       return this.clientRepository.save(client);
     }
 
-    client = this.clientRepository.create({
-      ...dto,
-      firstName,
-    });
+    client = this.clientRepository.create({ ...dto, firstName });
     return this.clientRepository.save(client);
   }
 
   async findOne(id: number) {
-    return this.clientRepository.findOne({ 
-      where: { id },
-      relations: ['orders']
-    });
+    return this.clientRepository.findOne({ where: { id }, relations: ['orders'] });
   }
 
   async findAll() {
@@ -58,8 +140,6 @@ export class ClientsService {
         ...client,
         hasNewOrder,
         unreadCount,
-        // Remove large relations to keep response size manageable if needed, 
-        // but here it's likely fine for the admin panel.
         orders: undefined,
         chatMessages: undefined,
       };
