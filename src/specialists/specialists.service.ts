@@ -215,8 +215,10 @@ export class SpecialistsService {
   }
 
   async registerProfile(telegramId: string, fullName: string, phone: string) {
-    const specialist = await this.repo.findOneBy({ telegramId: telegramId as any });
-    if (!specialist) throw new Error(`Specialist not found: ${telegramId}`);
+    let specialist = await this.repo.findOneBy({ telegramId: telegramId as any });
+    if (!specialist) {
+      specialist = this.repo.create({ telegramId: telegramId as any });
+    }
     specialist.fullName = fullName;
     specialist.phone = phone;
     return this.repo.save(specialist);
