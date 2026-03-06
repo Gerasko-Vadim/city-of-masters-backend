@@ -445,6 +445,21 @@ export class OrderService {
     return savedOrder;
   }
 
+  async noDeal(orderId: number, telegramId: number): Promise<Order> {
+    const order = await this.findOne(orderId);
+
+    if (String(order.assignedSpecialistId) !== String(telegramId)) {
+      throw new ConflictException('You are not assigned to this order');
+    }
+
+    if (order.status !== OrderStatus.IN_PROGRESS) {
+      throw new ConflictException('Order is not in progress');
+    }
+
+    // Revert to PAID — update() will clear assignedSpecialistId and trigger specialist notifications
+    return this.update(orderId, { status: OrderStatus.PAID });
+  }
+
   async findActiveClientOrder(telegramId: string): Promise<Order | null> {
     const client = await this.clientsService.findByTelegramId(telegramId);
     if (!client) return null;

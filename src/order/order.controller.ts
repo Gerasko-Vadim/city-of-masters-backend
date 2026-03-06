@@ -80,6 +80,14 @@ export class OrderController {
     return this.orderService.completeByBot(id, body.telegramId);
   }
 
+  @Post(':id/no-deal')
+  noDeal(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: { telegramId: number },
+  ) {
+    return this.orderService.noDeal(id, body.telegramId);
+  }
+
   @Get('active/:telegramId')
   findActiveOrder(@Param('telegramId') telegramId: string) {
     return this.orderService.findActiveClientOrder(telegramId);
