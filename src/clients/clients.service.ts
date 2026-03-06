@@ -27,17 +27,17 @@ export class ClientsService implements OnModuleInit {
     const BSK = 6 * 60 * 60 * 1000;
     const now = new Date();
     const bskNow = new Date(now.getTime() + BSK);
-    const dow = bskNow.getUTCDay(); // 0=Sun 1=Mon
+    const dow = bskNow.getUTCDay(); // 0=Sun 6=Sat
     const bskHour = bskNow.getUTCHours();
 
-    // If today is Monday and before 10:00 BSK → next broadcast is today
-    const daysUntil = (dow === 1 && bskHour < 10) ? 0 : (1 + 7 - dow) % 7 || 7;
+    // If today is Saturday and before 09:00 BSK → next broadcast is today
+    const daysUntil = (dow === 6 && bskHour < 9) ? 0 : (6 + 7 - dow) % 7 || 7;
 
     return new Date(Date.UTC(
       bskNow.getUTCFullYear(),
       bskNow.getUTCMonth(),
       bskNow.getUTCDate() + daysUntil,
-      10 - 6, 0, 0, // 10:00 BSK = 04:00 UTC
+      9 - 6, 0, 0, // 09:00 BSK = 03:00 UTC
     ));
   }
 
