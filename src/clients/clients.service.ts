@@ -54,9 +54,9 @@ export class ClientsService implements OnModuleInit {
     }, delay);
   }
 
-  async sendWeeklyBroadcast() {
+  async sendWeeklyBroadcast(customText?: string) {
     const clients = await this.clientRepository.find({ select: ['telegramId'] });
-    const text =
+    const text = customText ||
       `👋 Привет! На связи команда <b>Город Мастеров</b> 🏠\n\n` +
       `Мы заботимся о вас и хотим убедиться, что всё в порядке.\n\n` +
       `Нужна ли вам помощь мастера? Мы готовы помочь в любой момент!`;

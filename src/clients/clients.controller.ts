@@ -32,8 +32,8 @@ export class ClientsController {
 
   @UseGuards(JwtAuthGuard)
   @Post('broadcast-now')
-  broadcastNow() {
-    return this.clientsService.sendWeeklyBroadcast();
+  broadcastNow(@Body() body: { text?: string }) {
+    return this.clientsService.sendWeeklyBroadcast(body?.text);
   }
 
   @UseGuards(JwtAuthGuard)
