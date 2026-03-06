@@ -222,7 +222,16 @@ export class SpecialistsService {
     specialist.fullName = fullName;
     specialist.phone = phone;
     const saved = await this.repo.save(specialist);
-    this.eventsGateway.sendSpecialistUpdate({ ...saved, _event: 'registered' });
+    // Notify info bot via HTTP (more reliable than socket.io for one-time events)
+    const infoBotUrl = process.env.INFO_BOT_URL;
+    const internalSecret = process.env.INTERNAL_SECRET;
+    if (infoBotUrl && internalSecret) {
+      fetch(`${infoBotUrl}/internal/master-registered`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-internal-secret': internalSecret },
+        body: JSON.stringify({ fullName: saved.fullName, phone: saved.phone, username: saved.username, telegramId: saved.telegramId }),
+      }).catch((e) => console.error('Info bot notify failed:', e.message));
+    }
     return saved;
   }
 }
