@@ -44,8 +44,8 @@ export class ClientsController {
 
   @UseGuards(JwtAuthGuard)
   @Post('broadcast-auto-text')
-  setAutoText(@Body() body: { text: string }) {
-    return this.clientsService.setAutoText(body.text);
+  setAutoText(@Body() body: { text: string; buttonVisible: boolean }) {
+    return this.clientsService.setAutoText(body.text, body.buttonVisible ?? true);
   }
 
   @UseGuards(JwtAuthGuard)
