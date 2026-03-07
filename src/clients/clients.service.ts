@@ -6,7 +6,6 @@ import { RegisterClientDto } from './dto/register-client.dto';
 import { clientBot } from 'src/telegram/telegram.service';
 
 const MINI_APP_URL = process.env.CLIENT_MINI_APP_URL || 'https://t.me/city_of_masters_client_bot';
-const MINI_APP_WEB_URL = process.env.CLIENT_MINI_APP_WEB_URL || null;
 
 @Injectable()
 export class ClientsService implements OnModuleInit {
@@ -79,11 +78,7 @@ export class ClientsService implements OnModuleInit {
           parse_mode: 'HTML',
           ...(buttonVisible ? {
             reply_markup: {
-              inline_keyboard: [[
-                MINI_APP_WEB_URL
-                  ? { text: '📲 Заказать мастера', web_app: { url: MINI_APP_WEB_URL } }
-                  : { text: '📲 Заказать мастера', url: MINI_APP_URL },
-              ]],
+              inline_keyboard: [[{ text: '📲 Заказать мастера', web_app: { url: MINI_APP_URL } }]],
             },
           } : {}),
         });
