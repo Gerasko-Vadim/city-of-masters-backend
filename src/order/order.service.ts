@@ -377,7 +377,7 @@ export class OrderService {
 
   async pushOrderToNearbySpecialists(order: Order): Promise<void> {
     console.log(`[PUSH] Finding specialists near ${order.lat}, ${order.lng} for order ${order.id}`);
-    const specialists = await this.specialistsService.findNearbySpecialists(order.lat, order.lng, 10);
+    const specialists = await this.specialistsService.findNearbySpecialists(order.lat, order.lng, 5);
     console.log(`[PUSH] Found ${specialists.length} specialists`);
 
     const notified: { telegramId: string; messageId: number }[] = [];
