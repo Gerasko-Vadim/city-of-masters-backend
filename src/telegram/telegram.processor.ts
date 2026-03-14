@@ -21,7 +21,7 @@ export class TelegramProcessor {
     const { lat, lng } = job.data;
     console.log(`Searching specialists near ${lat}, ${lng}`);
 
-    const specialists = await this.specialistsService.findNearbySpecialists(lat, lng, 10);
+    const specialists = await this.specialistsService.findNearbySpecialists(lat, lng, 5);
 
     console.log(`Found ${specialists.length} nearby specialists`);
 
