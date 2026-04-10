@@ -62,7 +62,7 @@ export class PaymentService {
       lng: dto.lng,
       category: dto.category,
       source: OrderSource.CLIENT,
-      commission: 500,
+      commission: 200,
       status: OrderStatus.NEW,
       finikPaymentId: paymentId,
       ...(clientId ? { clientId } : {}),

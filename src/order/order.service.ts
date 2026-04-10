@@ -68,7 +68,7 @@ export class OrderService {
     const orderData = {
       ...dto,
       source: (dto.source as OrderSource) || OrderSource.CLIENT,
-      commission: 500,
+      commission: 200,
     };
     delete orderData.telegramId;
     if (clientId) {
